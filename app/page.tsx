@@ -26,12 +26,15 @@ import {
   RotateCcw,
   Cloud,
   Database,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export default function MinimalIssueHubPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedFilterPPIC, setSelectedFilterPPIC] = useState<PPICId | 'ALL'>('ALL');
   const [isCloudActive, setIsCloudActive] = useState<boolean>(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Customizable PPIC Names
   const [ppicNames, setPpicNames] = useState<PPICNamesMap>(DEFAULT_PPIC_NAMES);
@@ -46,6 +49,27 @@ export default function MinimalIssueHubPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newPpic, setNewPpic] = useState<PPICId>('PPIC 1');
   const [newDate, setNewDate] = useState('2026-10-27');
+
+  // Theme Sync on Mount
+  useEffect(() => {
+    try {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'dark' : 'light');
+    } catch {}
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('ppic_theme', nextTheme);
+    } catch {}
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   // Load data function
   const refreshData = async () => {
@@ -160,7 +184,7 @@ export default function MinimalIssueHubPage() {
     setTempNames(DEFAULT_PPIC_NAMES);
   };
 
-  // 1. Unresolved Issues (Pinned on Top, with live elapsed duration)
+  // 1. Unresolved Issues (Pinned, with live elapsed duration)
   const unresolvedIssues = useMemo(() => {
     return issues
       .filter((i) => i.status === 'BELUM_SELESAI')
@@ -225,55 +249,79 @@ export default function MinimalIssueHubPage() {
   }, [issues, selectedDateKey, selectedFilterPPIC]);
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 sm:p-6 md:p-10 font-sans selection:bg-white selection:text-black">
-      <div className="max-w-4xl mx-auto space-y-7">
-        {/* HEADER */}
-        <header className="space-y-3 pb-4 border-b border-white/10">
-          {/* Top Row: Title, Status Icon, and Actions */}
-          <div className="flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-100 dark:bg-[#08090C] text-slate-900 dark:text-[#F5F5F7] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(148,163,184,0.18),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] font-sans transition-colors duration-200">
+      <div className="w-full max-w-[1536px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* HEADER (GLASS PANEL) */}
+        <header className="glass-panel rounded-2xl p-4 sm:p-5 space-y-3.5">
+          {/* Top Row: Title, Status Icon, and Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  PPIC Issue Hub
+                </h1>
                 {isCloudActive ? (
                   <span
-                    title="Cloud Sync Active"
-                    className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30 shrink-0"
+                    title="Cloud Sync Active (Supabase)"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 shrink-0"
                   >
                     <Cloud className="w-3.5 h-3.5" />
                   </span>
                 ) : (
                   <span
-                    title="Local Storage"
-                    className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white/50 border border-white/10 shrink-0"
+                    title="Local Storage Mode"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white/50 border border-slate-300 dark:border-white/10 shrink-0"
                   >
                     <Database className="w-3.5 h-3.5" />
                   </span>
                 )}
               </div>
-              <p className="text-xs text-white/40 mt-0.5">5 PPIC Operations &middot; Monthly Issue Tracker</p>
+              <p className="text-xs text-slate-500 dark:text-white/40 mt-0.5">
+                5 PPIC Operations &middot; Monthly Issue Tracker
+              </p>
             </div>
 
-            <button
-              onClick={() => {
-                setTempNames(ppicNames);
-                setIsEditNamesOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-white/70 hover:text-white border border-white/10 transition-colors shrink-0"
-              title="Edit names for the 5 PPICs"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-              <span>Edit Names</span>
-            </button>
+            {/* Actions: Theme Toggle & Edit Names */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Dark / Light Mode Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-300/80 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-700 dark:text-white/80 border border-slate-300/70 dark:border-white/10 transition-colors shadow-2xs"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-700" />
+                )}
+              </button>
+
+              {/* Edit Names Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTempNames(ppicNames);
+                  setIsEditNamesOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-300/80 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-xs font-medium text-slate-700 dark:text-white/80 border border-slate-300/70 dark:border-white/10 transition-colors shadow-2xs"
+                title="Edit names for the 5 PPICs"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+                <span>Edit Names</span>
+              </button>
+            </div>
           </div>
 
           {/* Bottom Row: Full-Width Filter Bar */}
-          <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-xl border border-white/10 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="glass-pill p-1 rounded-xl flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setSelectedFilterPPIC('ALL')}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 selectedFilterPPIC === 'ALL'
-                  ? 'bg-white text-black font-semibold shadow'
-                  : 'text-white/60 hover:text-white'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-black font-semibold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10'
               }`}
             >
               All
@@ -284,10 +332,10 @@ export default function MinimalIssueHubPage() {
                 <button
                   key={key}
                   onClick={() => setSelectedFilterPPIC(key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                     active
-                      ? 'bg-white text-black font-semibold shadow'
-                      : 'text-white/60 hover:text-white'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-black font-semibold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10'
                   }`}
                   title={ppicNames[key]}
                 >
@@ -298,316 +346,328 @@ export default function MinimalIssueHubPage() {
           </div>
         </header>
 
-        {/* SECTION 1: UNRESOLVED ISSUES (COMPACT & MINIMALIST) */}
-        <section className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-white/90">Unresolved Issues</h2>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/70">
-                {unresolvedIssues.length}
-              </span>
-            </div>
-          </div>
+        {/* RESPONSIVE FULL WIDTH GRID: 12 COLUMNS ON DESKTOP */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT / MAIN COLUMN: QUICK ADD & CALENDAR (7/12 on lg, 8/12 on xl) */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+            {/* QUICK 1-ROW ADD ISSUE FORM */}
+            <section className="glass-card rounded-2xl p-3.5 sm:p-4">
+              <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
+                <select
+                  value={newPpic}
+                  onChange={(e) => setNewPpic(e.target.value as PPICId)}
+                  className="w-full sm:w-44 px-3 py-2 rounded-xl bg-white/80 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 truncate shadow-2xs"
+                >
+                  {PPIC_KEYS.map((k) => (
+                    <option key={k} value={k} className="bg-white text-slate-900 dark:bg-black dark:text-white">
+                      {ppicNames[k]}
+                    </option>
+                  ))}
+                </select>
 
-          {unresolvedIssues.length === 0 ? (
-            <div className="py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-white/40">
-              All issues resolved.
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {unresolvedIssues.map((issue) => {
-                const time = getElapsedTime(issue.createdAt);
+                <input
+                  type="text"
+                  required
+                  placeholder="Describe PPIC issue or bottleneck..."
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full flex-1 px-3.5 py-2 rounded-xl bg-white/80 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
+                />
 
-                return (
-                  <div
-                    key={issue.id}
-                    className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/15 transition-all"
-                  >
-                    {/* Left: PPIC Tag + Title */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/80 shrink-0">
-                        {ppicNames[issue.ppic] || issue.ppic}
-                      </span>
-                      <p className="text-xs text-white/90 truncate">
-                        {issue.title}
-                      </p>
-                    </div>
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full sm:w-36 px-3 py-2 rounded-xl bg-white/80 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
+                />
 
-                    {/* Right: Elapsed Duration + Resolve Button */}
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                          time.isOverdue
-                            ? 'text-red-400 bg-red-500/10'
-                            : 'text-white/40'
-                        }`}
-                      >
-                        {time.text}
-                      </span>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-black dark:hover:bg-white/90 text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 transition-all shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Issue</span>
+                </button>
+              </form>
+            </section>
 
-                      <button
-                        onClick={() => handleToggleStatus(issue.id)}
-                        className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black font-medium transition-all"
-                      >
-                        Resolve
-                      </button>
+            {/* MONTHLY CALENDAR VIEW */}
+            <section className="glass-card rounded-3xl p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-500 dark:text-white/50" />
+                  <h2 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white/90">
+                    Monthly Calendar View
+                  </h2>
+                </div>
 
-                      <button
-                        onClick={() => handleDelete(issue.id)}
-                        className="p-1 text-white/20 hover:text-white transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* SECTION 2: QUICK 1-ROW ADD ISSUE FORM */}
-        <section className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
-          <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
-            <select
-              value={newPpic}
-              onChange={(e) => setNewPpic(e.target.value as PPICId)}
-              className="w-full sm:w-44 px-3 py-2 rounded-xl bg-black border border-white/15 text-xs text-white focus:outline-none focus:border-white/40 truncate"
-            >
-              {PPIC_KEYS.map((k) => (
-                <option key={k} value={k} className="bg-black text-white">
-                  {ppicNames[k]}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              required
-              placeholder="Describe PPIC issue or bottleneck..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full flex-1 px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/15 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/40"
-            />
-
-            <input
-              type="date"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="w-full sm:w-36 px-3 py-2 rounded-xl bg-black border border-white/15 text-xs text-white focus:outline-none focus:border-white/40"
-            />
-
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Issue</span>
-            </button>
-          </form>
-        </section>
-
-        {/* SECTION 3: MONTHLY CALENDAR VIEW */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold tracking-tight text-white/90">
-              Monthly Calendar View
-            </h2>
-
-            {/* Month Switcher */}
-            <div className="flex items-center gap-1 bg-white/[0.06] border border-white/10 rounded-xl p-0.5">
-              <button
-                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-                className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
-                title="Previous month"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-xs font-medium text-white px-3 capitalize min-w-[120px] text-center">
-                {monthName}
-              </span>
-              <button
-                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-                className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
-                title="Next month"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/10 space-y-2">
-            {/* Weekday Labels (English) */}
-            <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-white/30 uppercase pb-1">
-              <div>Mon</div>
-              <div>Tue</div>
-              <div>Wed</div>
-              <div>Thu</div>
-              <div>Fri</div>
-              <div>Sat</div>
-              <div>Sun</div>
-            </div>
-
-            {/* Days Grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {calendarDays.map((cell) => {
-                const dayIssues = issuesByDate.get(cell.dateKey) || [];
-                const isSelected = cell.dateKey === selectedDateKey;
-                const hasUnresolved = dayIssues.some((i) => i.status === 'BELUM_SELESAI');
-
-                return (
+                {/* Month Switcher */}
+                <div className="flex items-center gap-1 glass-pill rounded-xl p-0.5">
                   <button
-                    key={cell.dateKey}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDateKey(cell.dateKey);
-                      setNewDate(cell.dateKey);
-                    }}
-                    className={`min-h-[58px] sm:min-h-[64px] p-2 rounded-xl border text-left flex flex-col justify-between transition-all ${
-                      isSelected
-                        ? 'bg-white text-black border-white shadow'
-                        : cell.isCurrentMonth
-                        ? 'bg-white/[0.02] border-white/10 hover:bg-white/[0.06]'
-                        : 'opacity-20 border-transparent'
-                    }`}
+                    onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                    className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white transition-colors"
+                    title="Previous month"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">{cell.dayNum}</span>
-                      {dayIssues.length > 0 && (
-                        <span
-                          className={`text-[9px] font-mono px-1 rounded ${
-                            isSelected
-                              ? 'bg-black text-white font-semibold'
-                              : hasUnresolved
-                              ? 'bg-white/20 text-white font-semibold'
-                              : 'bg-white/10 text-white/60'
-                          }`}
-                        >
-                          {dayIssues.length}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Indicator Dot */}
-                    <div className="flex items-center gap-1">
-                      {dayIssues.length > 0 && (
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isSelected
-                              ? 'bg-black'
-                              : hasUnresolved
-                              ? 'bg-white'
-                              : 'bg-white/40'
-                          }`}
-                        />
-                      )}
-                    </div>
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                );
-              })}
-            </div>
-          </div>
+                  <span className="text-xs font-semibold text-slate-900 dark:text-white px-3 capitalize min-w-[120px] text-center">
+                    {monthName}
+                  </span>
+                  <button
+                    onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                    className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white transition-colors"
+                    title="Next month"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
 
-          {/* SELECTED DATE ISSUES LIST */}
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-white/50" />
-              <h3 className="text-xs font-semibold text-white/80">
-                Issues for {formatEnglishDate(selectedDateKey)}
-              </h3>
-              <span className="text-xs text-white/30 font-mono">
-                ({selectedDateIssues.length})
-              </span>
-            </div>
+              {/* Weekday Labels (English) */}
+              <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-400 dark:text-white/30 uppercase pb-1">
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+                <div>Sun</div>
+              </div>
 
-            {selectedDateIssues.length === 0 ? (
-              <p className="text-xs text-white/30 italic py-1">
-                No issues recorded for this date.
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {selectedDateIssues.map((issue) => {
-                  const isDone = issue.status === 'SELESAI';
+              {/* Days Grid */}
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                {calendarDays.map((cell) => {
+                  const dayIssues = issuesByDate.get(cell.dateKey) || [];
+                  const isSelected = cell.dateKey === selectedDateKey;
+                  const hasUnresolved = dayIssues.some((i) => i.status === 'BELUM_SELESAI');
 
                   return (
-                    <div
-                      key={issue.id}
-                      className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3"
+                    <button
+                      key={cell.dateKey}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDateKey(cell.dateKey);
+                        setNewDate(cell.dateKey);
+                      }}
+                      className={`min-h-[64px] sm:min-h-[76px] p-2 sm:p-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
+                        isSelected
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-black border-slate-900 dark:border-white shadow-md scale-[1.02]'
+                          : cell.isCurrentMonth
+                          ? 'bg-white/60 dark:bg-white/[0.02] border-slate-200/80 dark:border-white/10 hover:bg-white hover:border-slate-300 dark:hover:bg-white/[0.06] text-slate-800 dark:text-white'
+                          : 'opacity-20 border-transparent text-slate-400 dark:text-white'
+                      }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/80 border border-white/10 shrink-0 truncate max-w-[140px]">
-                          {ppicNames[issue.ppic] || issue.ppic}
-                        </span>
-                        <p
-                          className={`text-xs truncate ${
-                            isDone ? 'line-through text-white/30' : 'text-white/90'
-                          }`}
-                        >
-                          {issue.title}
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold">{cell.dayNum}</span>
+                        {dayIssues.length > 0 && (
+                          <span
+                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full ${
+                              isSelected
+                                ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black font-bold'
+                                : hasUnresolved
+                                ? 'bg-red-500/15 text-red-600 dark:text-red-300 dark:bg-red-500/20 font-semibold'
+                                : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/60'
+                            }`}
+                          >
+                            {dayIssues.length}
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => handleToggleStatus(issue.id)}
-                          className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all ${
-                            isDone
-                              ? 'bg-white/5 text-white/40 border-white/10 hover:text-white'
-                              : 'bg-white/10 text-white border-white/20 hover:bg-white hover:text-black'
-                          }`}
-                        >
-                          {isDone ? 'Reopen' : 'Resolve'}
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(issue.id)}
-                          className="p-1 text-white/30 hover:text-white transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                      {/* Indicator Dot */}
+                      <div className="flex items-center gap-1">
+                        {dayIssues.length > 0 && (
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isSelected
+                                ? 'bg-white dark:bg-black'
+                                : hasUnresolved
+                                ? 'bg-red-500'
+                                : 'bg-emerald-500'
+                            }`}
+                          />
+                        )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-            )}
+            </section>
           </div>
-        </section>
+
+          {/* RIGHT / SIDE COLUMN: UNRESOLVED TRACKER & SELECTED DATE ISSUES (5/12 on lg, 4/12 on xl) */}
+          <div className="lg:col-span-5 xl:col-span-4 space-y-6">
+            {/* UNRESOLVED ISSUES (PINNED LIVE TRACKER) */}
+            <section className="glass-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-200/70 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-500" />
+                  <h2 className="font-semibold text-slate-900 dark:text-white/90">Unresolved Issues</h2>
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold">
+                    {unresolvedIssues.length}
+                  </span>
+                </div>
+              </div>
+
+              {unresolvedIssues.length === 0 ? (
+                <div className="py-4 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 text-center font-medium">
+                  ✓ All issues resolved. Great job!
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                  {unresolvedIssues.map((issue) => {
+                    const time = getElapsedTime(issue.createdAt);
+
+                    return (
+                      <div
+                        key={issue.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/70 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 transition-all shadow-2xs"
+                      >
+                        {/* Left: PPIC Tag + Title */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0">
+                            {ppicNames[issue.ppic] || issue.ppic}
+                          </span>
+                          <p className="text-xs font-medium text-slate-900 dark:text-white/90 truncate max-w-[210px] sm:max-w-[280px]">
+                            {issue.title}
+                          </p>
+                        </div>
+
+                        {/* Right: Elapsed Duration + Resolve Button */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                              time.isOverdue
+                                ? 'text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/10 font-semibold'
+                                : 'text-slate-500 dark:text-white/40'
+                            }`}
+                          >
+                            {time.text}
+                          </span>
+
+                          <button
+                            onClick={() => handleToggleStatus(issue.id)}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white/10 dark:hover:bg-white dark:text-white dark:hover:text-black font-semibold transition-all shadow-2xs"
+                          >
+                            Resolve
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(issue.id)}
+                            className="p-1 text-slate-400 hover:text-red-600 dark:text-white/20 dark:hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* SELECTED DATE ISSUES LIST */}
+            <section className="glass-card rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-200/70 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-white/50" />
+                  <h3 className="text-xs font-semibold text-slate-900 dark:text-white/90">
+                    Issues for {formatEnglishDate(selectedDateKey)}
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-white/40 font-mono font-medium">
+                  {selectedDateIssues.length} issue{selectedDateIssues.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {selectedDateIssues.length === 0 ? (
+                <p className="text-xs text-slate-400 dark:text-white/40 italic py-2 text-center">
+                  No issues recorded for this date.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  {selectedDateIssues.map((issue) => {
+                    const isDone = issue.status === 'SELESAI';
+
+                    return (
+                      <div
+                        key={issue.id}
+                        className="p-3 rounded-xl bg-white/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between gap-3 shadow-2xs"
+                      >
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0 truncate max-w-[140px]">
+                            {ppicNames[issue.ppic] || issue.ppic}
+                          </span>
+                          <p
+                            className={`text-xs font-medium truncate max-w-[210px] sm:max-w-[280px] ${
+                              isDone ? 'line-through text-slate-400 dark:text-white/30' : 'text-slate-900 dark:text-white/90'
+                            }`}
+                          >
+                            {issue.title}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleToggleStatus(issue.id)}
+                            className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                              isDone
+                                ? 'bg-slate-200/60 text-slate-600 border-slate-300 dark:bg-white/5 dark:text-white/40 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white dark:hover:text-black font-semibold'
+                            }`}
+                          >
+                            {isDone ? 'Reopen' : 'Resolve'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(issue.id)}
+                            className="p-1 text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
 
         {/* MODAL: EDIT 5 PPIC NAMES */}
         {isEditNamesOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
               onClick={() => setIsEditNamesOpen(false)}
             />
 
-            <div className="relative w-full max-w-md bg-[#0D0D11] border border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="relative w-full max-w-md glass-panel bg-white/95 dark:bg-[#0D0D11]/95 border border-slate-200/80 dark:border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/10">
                 <div className="flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-white/70" />
-                  <h3 className="text-sm font-semibold text-white">Edit 5 PPIC Names</h3>
+                  <Settings2 className="w-4 h-4 text-slate-600 dark:text-white/70" />
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Edit 5 PPIC Names</h3>
                 </div>
                 <button
                   onClick={() => setIsEditNamesOpen(false)}
-                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-white/40 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <form onSubmit={handleSavePpicNames} className="space-y-3">
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-slate-500 dark:text-white/50">
                   Customize department, material, or PIC labels for each PPIC unit:
                 </p>
 
                 {PPIC_KEYS.map((key) => (
                   <div key={key} className="space-y-1">
-                    <label className="block text-[11px] font-medium text-white/60">
-                      Original Label: <span className="text-white/90 font-semibold">{key}</span>
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-white/60">
+                      Original Label: <span className="text-slate-900 dark:text-white/90 font-semibold">{key}</span>
                     </label>
                     <input
                       type="text"
@@ -620,16 +680,16 @@ export default function MinimalIssueHubPage() {
                         }))
                       }
                       placeholder={`Name for ${key}`}
-                      className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/15 text-xs text-white focus:outline-none focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40"
                     />
                   </div>
                 ))}
 
-                <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 dark:border-white/10">
                   <button
                     type="button"
                     onClick={handleResetNames}
-                    className="flex items-center gap-1 text-[11px] text-white/40 hover:text-white transition-colors"
+                    className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:text-white/40 dark:hover:text-white transition-colors"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>Reset Defaults</span>
@@ -639,13 +699,13 @@ export default function MinimalIssueHubPage() {
                     <button
                       type="button"
                       onClick={() => setIsEditNamesOpen(false)}
-                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 text-xs font-medium transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-300/80 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white/60 text-xs font-medium transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-semibold shadow transition-all"
+                      className="px-4 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-white/90 text-xs font-semibold shadow transition-all"
                     >
                       Save Changes
                     </button>
