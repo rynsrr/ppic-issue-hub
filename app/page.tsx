@@ -250,10 +250,10 @@ export default function MinimalIssueHubPage() {
   }, [issues, selectedDateKey, selectedFilterPPIC]);
 
   return (
-    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-slate-100 dark:bg-[#08090C] text-slate-900 dark:text-[#F5F5F7] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(148,163,184,0.18),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] font-sans transition-colors duration-200">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-slate-100 dark:bg-[#090A0F] text-slate-900 dark:text-[#F5F5F7] font-sans transition-colors duration-200">
       <div className="w-full max-w-[1600px] mx-auto p-2.5 sm:p-4 flex flex-col flex-1 min-h-0 gap-2.5 sm:gap-3">
-        {/* UNIFIED TOP BAR (BROWSER TAB STYLE: BRAND + TABS + EDIT NAMES + THEME) */}
-        <header className="glass-panel rounded-2xl px-3 sm:px-4 py-2 flex items-center justify-between gap-2.5 sm:gap-4 shrink-0 shadow-xs">
+        {/* UNIFIED TOP BAR (SOLID TAB BAR: BRAND + TABS + EDIT NAMES + THEME) */}
+        <header className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl px-3 sm:px-4 py-2 flex items-center justify-between gap-2.5 sm:gap-4 shrink-0 shadow-xs">
           {/* Brand & Status Icon */}
           <div className="flex items-center gap-2 shrink-0">
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
@@ -269,7 +269,7 @@ export default function MinimalIssueHubPage() {
             ) : (
               <span
                 title="Local Storage Mode"
-                className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-white/50 border border-slate-300 dark:border-white/10 shrink-0"
+                className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/50 border border-slate-300 dark:border-white/10 shrink-0"
               >
                 <Database className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               </span>
@@ -277,7 +277,7 @@ export default function MinimalIssueHubPage() {
           </div>
 
           {/* Unified Tabs Row: All, PPIC 1..5, and Edit Names (Same Line) */}
-          <div className="glass-pill p-1 rounded-xl flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0 max-w-full">
+          <div className="bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 p-1 rounded-xl flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0 max-w-full">
             <button
               onClick={() => setSelectedFilterPPIC('ALL')}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
@@ -327,7 +327,7 @@ export default function MinimalIssueHubPage() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-200/70 hover:bg-slate-300/80 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-700 dark:text-white/80 border border-slate-300/70 dark:border-white/10 transition-colors shadow-2xs"
+              className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-700 dark:text-white/80 border border-slate-300/70 dark:border-white/10 transition-colors shadow-2xs"
               title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle theme"
             >
@@ -345,12 +345,12 @@ export default function MinimalIssueHubPage() {
           {/* LEFT COLUMN: QUICK ADD + CALENDAR VIEW (8 of 12 on desktop) */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
             {/* QUICK 1-ROW ADD ISSUE FORM */}
-            <section className="glass-card rounded-2xl p-2.5 sm:p-3 shrink-0">
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 shrink-0 shadow-xs">
               <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
                 <select
                   value={newPpic}
                   onChange={(e) => setNewPpic(e.target.value as PPICId)}
-                  className="w-full sm:w-44 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 truncate shadow-2xs"
+                  className="w-full sm:w-44 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 truncate shadow-2xs"
                 >
                   {PPIC_KEYS.map((k) => (
                     <option key={k} value={k} className="bg-white text-slate-900 dark:bg-black dark:text-white">
@@ -365,14 +365,14 @@ export default function MinimalIssueHubPage() {
                   placeholder="Describe PPIC issue or bottleneck..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full flex-1 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
+                  className="w-full flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
                 />
 
                 <input
                   type="date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  className="w-full sm:w-36 px-2.5 py-1.5 rounded-xl bg-white/80 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
+                  className="w-full sm:w-36 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
                 />
 
                 <button
@@ -386,7 +386,7 @@ export default function MinimalIssueHubPage() {
             </section>
 
             {/* MONTHLY CALENDAR VIEW (AUTOFIT HEIGHT ON DESKTOP) */}
-            <section className="glass-card rounded-2xl p-3 sm:p-4 flex-1 min-h-0 flex flex-col gap-2">
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-4 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-slate-500 dark:text-white/50" />
@@ -396,7 +396,7 @@ export default function MinimalIssueHubPage() {
                 </div>
 
                 {/* Month Switcher */}
-                <div className="flex items-center gap-1 glass-pill rounded-xl p-0.5">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-xl p-0.5">
                   <button
                     onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
                     className="p-1 rounded-lg text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white transition-colors"
@@ -452,7 +452,7 @@ export default function MinimalIssueHubPage() {
                         isSelected
                           ? 'bg-slate-900 text-white dark:bg-white dark:text-black border-slate-900 dark:border-white shadow-md scale-[1.01]'
                           : cell.isCurrentMonth
-                          ? 'bg-white/60 dark:bg-white/[0.02] border-slate-200/80 dark:border-white/10 hover:bg-white hover:border-slate-300 dark:hover:bg-white/[0.06] text-slate-800 dark:text-white'
+                          ? 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/10 hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-white/[0.05] text-slate-800 dark:text-white'
                           : 'opacity-20 border-transparent text-slate-400 dark:text-white'
                       }`}
                     >
@@ -497,7 +497,7 @@ export default function MinimalIssueHubPage() {
           {/* RIGHT COLUMN: UNRESOLVED ISSUES + SELECTED DATE (4 of 12 on desktop, split 50/50 in height) */}
           <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
             {/* UNRESOLVED ISSUES (INTERNAL SCROLL, NO WINDOW SCROLL) */}
-            <section className="glass-card rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2">
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200/70 dark:border-white/10 shrink-0">
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-amber-500" />
@@ -520,7 +520,7 @@ export default function MinimalIssueHubPage() {
                     return (
                       <div
                         key={issue.id}
-                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-white/70 dark:bg-white/[0.03] hover:bg-white dark:hover:bg-white/[0.06] border border-slate-200/80 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/15 transition-all shadow-2xs"
+                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-all shadow-2xs"
                       >
                         {/* Left: PPIC Tag + Title */}
                         <div className="flex flex-col gap-0.5 min-w-0">
@@ -567,7 +567,7 @@ export default function MinimalIssueHubPage() {
             </section>
 
             {/* SELECTED DATE ISSUES LIST (INTERNAL SCROLL, NO WINDOW SCROLL) */}
-            <section className="glass-card rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2">
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70 dark:border-white/10 shrink-0">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-white/50" />
@@ -592,7 +592,7 @@ export default function MinimalIssueHubPage() {
                     return (
                       <div
                         key={issue.id}
-                        className="p-2.5 rounded-xl bg-white/70 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 flex items-center justify-between gap-2.5 shadow-2xs"
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-2.5 shadow-2xs"
                       >
                         <div className="flex flex-col gap-0.5 min-w-0">
                           <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0 truncate max-w-[140px]">
@@ -640,11 +640,11 @@ export default function MinimalIssueHubPage() {
         {isEditNamesOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-slate-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+              className="fixed inset-0 bg-slate-900/60 dark:bg-black/85 transition-opacity"
               onClick={() => setIsEditNamesOpen(false)}
             />
 
-            <div className="relative w-full max-w-md glass-panel bg-white/95 dark:bg-[#0D0D11]/95 border border-slate-200/80 dark:border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
+            <div className="relative w-full max-w-md bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/15 rounded-3xl p-6 shadow-2xl z-10 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <Settings2 className="w-4 h-4 text-slate-600 dark:text-white/70" />
@@ -679,7 +679,7 @@ export default function MinimalIssueHubPage() {
                         }))
                       }
                       placeholder={`Name for ${key}`}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40"
                     />
                   </div>
                 ))}
@@ -698,7 +698,7 @@ export default function MinimalIssueHubPage() {
                     <button
                       type="button"
                       onClick={() => setIsEditNamesOpen(false)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-200/70 hover:bg-slate-300/80 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white/60 text-xs font-medium transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-white/60 text-xs font-medium transition-colors"
                     >
                       Cancel
                     </button>
