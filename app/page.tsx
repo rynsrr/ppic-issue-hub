@@ -233,12 +233,18 @@ export default function MinimalIssueHubPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
               {isCloudActive ? (
-                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30">
-                  <Cloud className="w-3 h-3" /> Cloud Sync
+                <span
+                  title="Cloud Sync Active"
+                  className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30 shrink-0"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10">
-                  <Database className="w-3 h-3" /> Local Storage
+                <span
+                  title="Local Storage"
+                  className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white/50 border border-white/10 shrink-0"
+                >
+                  <Database className="w-3.5 h-3.5" />
                 </span>
               )}
             </div>
