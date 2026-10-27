@@ -1,273 +1,494 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Issue, PPICId } from '@/types/issue';
-import { loadIssues, saveIssues, resetToDefaultIssues, exportIssuesToJson } from '@/lib/storage';
-import { Navbar } from '@/components/Navbar';
-import { UnresolvedHeroShelf } from '@/components/UnresolvedHeroShelf';
-import { MonthlyCalendarView } from '@/components/MonthlyCalendarView';
-import { PpicMatrixView } from '@/components/PpicMatrixView';
-import { NewIssueModal } from '@/components/NewIssueModal';
-import { DayDetailModal } from '@/components/DayDetailModal';
-import { IssueDetailModal } from '@/components/IssueDetailModal';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Issue, PPICId, PPIC_KEYS } from '@/types/issue';
+import { loadIssues, saveIssues } from '@/lib/storage';
+import { getElapsedTime, formatDateKey, formatIndoDate } from '@/lib/utils';
+import {
+  Clock,
+  Check,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Calendar,
+  AlertCircle,
+} from 'lucide-react';
 
-export default function HomePage() {
+export default function AppleTVMinimalPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [currentTab, setCurrentTab] = useState<'calendar' | 'matrix' | 'unresolved'>('calendar');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPPIC, setSelectedPPIC] = useState<PPICId | 'ALL'>('ALL');
+  const [selectedFilterPPIC, setSelectedFilterPPIC] = useState<PPICId | 'ALL'>('ALL');
 
-  // Modal states
-  const [isNewIssueOpen, setIsNewIssueOpen] = useState(false);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedDateIssues, setSelectedDateIssues] = useState<Issue[]>([]);
-  const [preselectedDateForNewIssue, setPreselectedDateForNewIssue] = useState<string | undefined>();
+  // Month navigation: default October 2026
+  const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date(2026, 9, 1));
+  const [selectedDateKey, setSelectedDateKey] = useState<string>('2026-10-27');
 
-  // Load from local storage
+  // Quick 1-row input state
+  const [newTitle, setNewTitle] = useState('');
+  const [newPpic, setNewPpic] = useState<PPICId>('PPIC 1');
+  const [newDate, setNewDate] = useState('2026-10-27');
+
+  // Live timer tick every 30s
+  const [, setTick] = useState(0);
   useEffect(() => {
-    const loaded = loadIssues();
-    setIssues(loaded);
+    setIssues(loadIssues());
+    const interval = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Save to local storage on issues change
-  const handleUpdateAllIssues = (updatedList: Issue[]) => {
-    setIssues(updatedList);
-    saveIssues(updatedList);
+  const updateIssues = (newList: Issue[]) => {
+    setIssues(newList);
+    saveIssues(newList);
   };
 
-  // Add new issue
-  const handleAddIssue = (newIssueData: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const nowIso = new Date().toISOString();
-    const newIssue: Issue = {
-      ...newIssueData,
-      id: `ISS-${Date.now().toString().slice(-6)}`,
-      createdAt: newIssueData.targetDate ? `${newIssueData.targetDate}T${nowIso.slice(11)}` : nowIso,
-      updatedAt: nowIso,
+  // Add issue handler (fast & simple)
+  const handleAddIssue = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim()) return;
+
+    const created: Issue = {
+      id: `ISS-${Date.now().toString().slice(-5)}`,
+      ppic: newPpic,
+      title: newTitle.trim(),
+      date: newDate,
+      status: 'BELUM_SELESAI',
+      createdAt: new Date().toISOString(),
     };
-    const updated = [newIssue, ...issues];
-    handleUpdateAllIssues(updated);
+
+    updateIssues([created, ...issues]);
+    setNewTitle('');
+    setSelectedDateKey(newDate);
   };
 
-  // Update existing issue
-  const handleUpdateIssue = (updatedIssue: Issue) => {
-    const updated = issues.map((i) => (i.id === updatedIssue.id ? updatedIssue : i));
-    handleUpdateAllIssues(updated);
-    setSelectedIssue(updatedIssue);
-  };
-
-  // Delete issue
-  const handleDeleteIssue = (issueId: string) => {
-    const updated = issues.filter((i) => i.id !== issueId);
-    handleUpdateAllIssues(updated);
-  };
-
-  // Quick toggle status (Open <-> In Progress)
-  const handleToggleStatus = (issueId: string) => {
-    const updated = issues.map((i) => {
-      if (i.id === issueId) {
-        const nextStatus = i.status === 'OPEN' ? 'IN_PROGRESS' : 'OPEN';
+  // 1-Click resolve / toggle
+  const handleToggleStatus = (id: string) => {
+    const updated = issues.map((item) => {
+      if (item.id === id) {
+        const isDone = item.status === 'SELESAI';
         return {
-          ...i,
-          status: nextStatus as any,
-          updatedAt: new Date().toISOString(),
+          ...item,
+          status: (isDone ? 'BELUM_SELESAI' : 'SELESAI') as Issue['status'],
+          resolvedAt: isDone ? null : new Date().toISOString(),
         };
       }
-      return i;
+      return item;
     });
-    handleUpdateAllIssues(updated);
+    updateIssues(updated);
   };
 
-  // Quick resolve
-  const handleQuickResolve = (issueId: string) => {
-    const updated = issues.map((i) => {
-      if (i.id === issueId) {
-        return {
-          ...i,
-          status: 'RESOLVED' as const,
-          resolvedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          resolutionNote: 'Diselesaikan melalui one-click action Apple TV Shelf.',
-        };
-      }
-      return i;
-    });
-    handleUpdateAllIssues(updated);
+  // Delete
+  const handleDelete = (id: string) => {
+    updateIssues(issues.filter((i) => i.id !== id));
+  };
 
-    // If day detail modal is open, also refresh that list
-    if (selectedDate) {
-      setSelectedDateIssues((prev) =>
-        prev.map((i) => (i.id === issueId ? { ...i, status: 'RESOLVED' } : i))
-      );
+  // 1. Unresolved Issues (Always at top, with elapsed time)
+  const unresolvedIssues = useMemo(() => {
+    return issues
+      .filter((i) => i.status === 'BELUM_SELESAI')
+      .filter((i) => selectedFilterPPIC === 'ALL' || i.ppic === selectedFilterPPIC)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [issues, selectedFilterPPIC]);
+
+  // 2. Month Calendar calculation
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const monthName = currentMonth.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    let startDay = firstDay.getDay();
+    if (startDay === 0) startDay = 7;
+
+    const totalDays = lastDay.getDate();
+    const days: { dateKey: string; dayNum: number; isCurrentMonth: boolean }[] = [];
+
+    const prevMonthLastDate = new Date(year, month, 0).getDate();
+    for (let i = startDay - 1; i > 0; i--) {
+      const d = prevMonthLastDate - i + 1;
+      const prevD = new Date(year, month - 1, d);
+      days.push({ dateKey: formatDateKey(prevD), dayNum: d, isCurrentMonth: false });
     }
-  };
 
-  // Reset to default sample
-  const handleResetData = () => {
-    if (confirm('Reset seluruh data isu kembali ke konfigurasi awal?')) {
-      const reset = resetToDefaultIssues();
-      setIssues(reset);
+    for (let d = 1; d <= totalDays; d++) {
+      const curD = new Date(year, month, d);
+      days.push({ dateKey: formatDateKey(curD), dayNum: d, isCurrentMonth: true });
     }
-  };
 
-  // Export JSON
-  const handleExportData = () => {
-    exportIssuesToJson(issues);
-  };
+    const remaining = 35 - days.length > 0 ? 35 - days.length : 42 - days.length;
+    for (let d = 1; d <= remaining; d++) {
+      const nextD = new Date(year, month + 1, d);
+      days.push({ dateKey: formatDateKey(nextD), dayNum: d, isCurrentMonth: false });
+    }
 
-  // Filter issues by search query
-  const displayedIssues = issues.filter((i) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      i.title.toLowerCase().includes(q) ||
-      i.description.toLowerCase().includes(q) ||
-      i.reporter.toLowerCase().includes(q) ||
-      i.assignedTo.toLowerCase().includes(q) ||
-      i.category.toLowerCase().includes(q) ||
-      i.id.toLowerCase().includes(q)
-    );
-  });
+    return days;
+  }, [year, month]);
 
-  const unresolvedCount = issues.filter((i) => i.status !== 'RESOLVED').length;
+  // Issues grouped by date
+  const issuesByDate = useMemo(() => {
+    const map = new Map<string, Issue[]>();
+    for (const issue of issues) {
+      if (selectedFilterPPIC !== 'ALL' && issue.ppic !== selectedFilterPPIC) continue;
+      const list = map.get(issue.date) || [];
+      list.push(issue);
+      map.set(issue.date, list);
+    }
+    return map;
+  }, [issues, selectedFilterPPIC]);
+
+  // Selected date issues
+  const selectedDateIssues = useMemo(() => {
+    const list = issues.filter((i) => i.date === selectedDateKey);
+    return selectedFilterPPIC === 'ALL'
+      ? list
+      : list.filter((i) => i.ppic === selectedFilterPPIC);
+  }, [issues, selectedDateKey, selectedFilterPPIC]);
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Sleek Apple TV Glass Header */}
-      <Navbar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onOpenNewIssueModal={() => {
-          setPreselectedDateForNewIssue(undefined);
-          setIsNewIssueOpen(true);
-        }}
-        onExportData={handleExportData}
-        onResetData={handleResetData}
-        unresolvedCount={unresolvedCount}
-      />
+    <div className="min-h-screen bg-black text-white p-4 sm:p-6 md:p-10 font-sans selection:bg-white selection:text-black">
+      <div className="max-w-4xl mx-auto space-y-7">
+        {/* HEADER: Apple TV Minimal Header */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+              <span className="text-[10px] tracking-widest uppercase px-2 py-0.5 rounded bg-white/10 text-white/70">
+                tvOS
+              </span>
+            </div>
+            <p className="text-xs text-white/40 mt-0.5">Pemantauan Isu 5 PPIC &middot; Kalender Bulanan</p>
+          </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-8 py-6 space-y-8">
-        {/* Top Sticky/Hero Section: Isu Yang Belum Diselesaikan Plus Waktunya */}
-        {/* Always visible at the top as requested by user! */}
-        <UnresolvedHeroShelf
-          issues={displayedIssues}
-          onSelectIssue={(issue) => setSelectedIssue(issue)}
-          onQuickResolve={handleQuickResolve}
-          onToggleStatus={handleToggleStatus}
-        />
+          {/* Understated Filter Pills (Monochrome Apple TV Segment) */}
+          <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => setSelectedFilterPPIC('ALL')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                selectedFilterPPIC === 'ALL'
+                  ? 'bg-white text-black font-semibold shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Semua
+            </button>
+            {PPIC_KEYS.map((key) => {
+              const active = selectedFilterPPIC === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedFilterPPIC(key)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                    active
+                      ? 'bg-white text-black font-semibold shadow'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+        </header>
 
-        {/* Tab View Switcher */}
-        {currentTab === 'calendar' && (
-          <MonthlyCalendarView
-            issues={displayedIssues}
-            selectedPPIC={selectedPPIC}
-            setSelectedPPIC={setSelectedPPIC}
-            onSelectDate={(date, dateIssues) => {
-              setSelectedDate(date);
-              setSelectedDateIssues(dateIssues);
-            }}
-            onSelectIssue={(issue) => setSelectedIssue(issue)}
-            onAddNewIssueForDate={(dateStr) => {
-              setPreselectedDateForNewIssue(dateStr);
-              setIsNewIssueOpen(true);
-            }}
-          />
-        )}
+        {/* SECTION 1: ISU BELUM SELESAI DI ATAS PLUS WAKTUNYA */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-tight text-white/90">
+                Isu Belum Selesai
+              </h2>
+              <span className="text-xs px-2 py-0.2 rounded-full bg-white/10 text-white/80 font-mono font-medium">
+                {unresolvedIssues.length}
+              </span>
+            </div>
+            <span className="text-[11px] text-white/30">Waktu dihitung otomatis</span>
+          </div>
 
-        {currentTab === 'matrix' && (
-          <PpicMatrixView
-            issues={displayedIssues}
-            onSelectIssue={(issue) => setSelectedIssue(issue)}
-            onAddNewIssueForPpic={(ppicId) => {
-              setIsNewIssueOpen(true);
-            }}
-          />
-        )}
+          {unresolvedIssues.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
+              <p className="text-xs text-white/50">
+                Tidak ada isu yang tertunda. Semua kendala telah diselesaikan.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {unresolvedIssues.map((issue) => {
+                const time = getElapsedTime(issue.createdAt);
 
-        {currentTab === 'unresolved' && (
-          <div className="glass-panel rounded-3xl p-6 border border-white/10">
-            <h3 className="text-lg font-bold text-white mb-2">Fokus Isu Terbuka & Aging Matrix</h3>
-            <p className="text-xs text-white/50 mb-6">
-              Seluruh isu dalam status &apos;Belum Mulai&apos; dan &apos;Sedang Diproses&apos; dengan urutan waktu terlama.
-            </p>
-            {/* Detailed list view */}
-            <div className="space-y-3">
-              {displayedIssues
-                .filter((i) => i.status !== 'RESOLVED')
-                .map((issue) => (
+                return (
                   <div
                     key={issue.id}
-                    onClick={() => setSelectedIssue(issue)}
-                    className="p-4 rounded-2xl glass-card border border-white/10 hover:border-white/30 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
+                    className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/25 hover:bg-white/[0.07] transition-all flex flex-col justify-between gap-3"
                   >
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-blue-400">{issue.ppicId.toUpperCase()}</span>
-                        <span className="text-xs text-white/40">&middot;</span>
-                        <span className="text-xs text-white/70">{issue.category}</span>
+                      {/* Badge PPIC + Elapsed Time (Waktunya) */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/90 border border-white/10">
+                          {issue.ppic}
+                        </span>
+
+                        <span
+                          className={`text-[11px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            time.isOverdue
+                              ? 'text-red-400 bg-red-500/10 border border-red-500/20'
+                              : 'text-white/60 bg-white/5 border border-white/10'
+                          }`}
+                        >
+                          <Clock className="w-3 h-3" />
+                          {time.text}
+                        </span>
                       </div>
-                      <h4 className="font-semibold text-white text-sm">{issue.title}</h4>
-                      <p className="text-xs text-white/50 line-clamp-1">{issue.description}</p>
+
+                      {/* Judul Isu */}
+                      <h3 className="text-xs sm:text-sm font-medium text-white/95 leading-snug">
+                        {issue.title}
+                      </h3>
+                      <p className="text-[11px] text-white/35 mt-1.5">
+                        {formatIndoDate(issue.date)}
+                      </p>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    {/* Quick Action Button */}
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleQuickResolve(issue.id);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium"
+                        onClick={() => handleDelete(issue.id)}
+                        className="p-1.5 text-white/30 hover:text-white rounded-lg transition-colors"
+                        title="Hapus"
                       >
-                        Selesaikan
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleStatus(issue.id)}
+                        className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 transition-all"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Selesaikan</span>
                       </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 2: INPUT CEPAT 1 BARIS (SUPER SIMPLE) */}
+        <section className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
+          <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
+            <select
+              value={newPpic}
+              onChange={(e) => setNewPpic(e.target.value as PPICId)}
+              className="w-full sm:w-28 px-3 py-2 rounded-xl bg-black border border-white/15 text-xs text-white focus:outline-none focus:border-white/40"
+            >
+              {PPIC_KEYS.map((k) => (
+                <option key={k} value={k} className="bg-black text-white">
+                  {k}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="text"
+              required
+              placeholder="Tulis kendala PPIC di sini..."
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full flex-1 px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/15 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/40"
+            />
+
+            <input
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="w-full sm:w-36 px-3 py-2 rounded-xl bg-black border border-white/15 text-xs text-white focus:outline-none focus:border-white/40"
+            />
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tambah</span>
+            </button>
+          </form>
+        </section>
+
+        {/* SECTION 3: TAMPILAN BULANAN (MONTHLY VIEW) */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold tracking-tight text-white/90">
+              Tampilan Kalender Bulanan
+            </h2>
+
+            {/* Month Switcher */}
+            <div className="flex items-center gap-1 bg-white/[0.06] border border-white/10 rounded-xl p-0.5">
+              <button
+                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
+                title="Bulan sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-white px-3 capitalize min-w-[120px] text-center">
+                {monthName}
+              </span>
+              <button
+                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
+                title="Bulan berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        )}
-      </main>
 
-      {/* Modals */}
-      <NewIssueModal
-        isOpen={isNewIssueOpen}
-        onClose={() => setIsNewIssueOpen(false)}
-        onAddIssue={handleAddIssue}
-        preselectedDate={preselectedDateForNewIssue}
-      />
+          {/* Calendar Grid (Clean Apple TV Frosted Sheet) */}
+          <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/10 space-y-2">
+            {/* Weekday Labels */}
+            <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-white/30 uppercase pb-1">
+              <div>Sen</div>
+              <div>Sel</div>
+              <div>Rab</div>
+              <div>Kam</div>
+              <div>Jum</div>
+              <div>Sab</div>
+              <div>Min</div>
+            </div>
 
-      <DayDetailModal
-        isOpen={!!selectedDate}
-        date={selectedDate}
-        issues={selectedDateIssues}
-        onClose={() => setSelectedDate(null)}
-        onSelectIssue={(issue) => {
-          setSelectedIssue(issue);
-          setSelectedDate(null);
-        }}
-        onAddNewIssueForDate={(dateStr) => {
-          setSelectedDate(null);
-          setPreselectedDateForNewIssue(dateStr);
-          setIsNewIssueOpen(true);
-        }}
-        onQuickResolve={handleQuickResolve}
-      />
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((cell) => {
+                const dayIssues = issuesByDate.get(cell.dateKey) || [];
+                const isSelected = cell.dateKey === selectedDateKey;
+                const hasUnresolved = dayIssues.some((i) => i.status === 'BELUM_SELESAI');
 
-      <IssueDetailModal
-        issue={selectedIssue}
-        isOpen={!!selectedIssue}
-        onClose={() => setSelectedIssue(null)}
-        onUpdateIssue={handleUpdateIssue}
-        onDeleteIssue={handleDeleteIssue}
-      />
+                return (
+                  <button
+                    key={cell.dateKey}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDateKey(cell.dateKey);
+                      setNewDate(cell.dateKey);
+                    }}
+                    className={`min-h-[58px] sm:min-h-[64px] p-2 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                      isSelected
+                        ? 'bg-white text-black border-white shadow'
+                        : cell.isCurrentMonth
+                        ? 'bg-white/[0.02] border-white/10 hover:bg-white/[0.06]'
+                        : 'opacity-20 border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">{cell.dayNum}</span>
+                      {dayIssues.length > 0 && (
+                        <span
+                          className={`text-[9px] font-mono px-1 rounded ${
+                            isSelected
+                              ? 'bg-black text-white font-semibold'
+                              : hasUnresolved
+                              ? 'bg-white/20 text-white font-semibold'
+                              : 'bg-white/10 text-white/60'
+                          }`}
+                        >
+                          {dayIssues.length}
+                        </span>
+                      )}
+                    </div>
 
-      {/* Footer */}
-      <footer className="mt-auto py-6 border-t border-white/[0.06] text-center text-xs text-white/40">
-        <p>PPIC Issue Hub &middot; Apple TV Aesthetic System &middot; Ready for Vercel Deployment</p>
-      </footer>
+                    {/* Indicator Dot */}
+                    <div className="flex items-center gap-1">
+                      {dayIssues.length > 0 && (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isSelected
+                              ? 'bg-black'
+                              : hasUnresolved
+                              ? 'bg-white'
+                              : 'bg-white/40'
+                          }`}
+                        />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* DETAIL DAFTAR ISU PADA TANGGAL TERPILIH */}
+          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-white/50" />
+              <h3 className="text-xs font-semibold text-white/80">
+                Isu Tanggal: {formatIndoDate(selectedDateKey)}
+              </h3>
+              <span className="text-xs text-white/30 font-mono">
+                ({selectedDateIssues.length})
+              </span>
+            </div>
+
+            {selectedDateIssues.length === 0 ? (
+              <p className="text-xs text-white/30 italic py-1">
+                Tidak ada isu tercatat untuk tanggal ini.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {selectedDateIssues.map((issue) => {
+                  const isDone = issue.status === 'SELESAI';
+
+                  return (
+                    <div
+                      key={issue.id}
+                      className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/80 border border-white/10 shrink-0">
+                          {issue.ppic}
+                        </span>
+                        <p
+                          className={`text-xs truncate ${
+                            isDone ? 'line-through text-white/30' : 'text-white/90'
+                          }`}
+                        >
+                          {issue.title}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleToggleStatus(issue.id)}
+                          className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                            isDone
+                              ? 'bg-white/5 text-white/40 border-white/10 hover:text-white'
+                              : 'bg-white/10 text-white border-white/20 hover:bg-white hover:text-black'
+                          }`}
+                        >
+                          {isDone ? 'Buka Kembali' : 'Selesai'}
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(issue.id)}
+                          className="p-1 text-white/30 hover:text-white transition-colors"
+                          title="Hapus"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="pt-4 border-t border-white/5 text-center text-xs text-white/20">
+          5 PPIC &middot; Apple TV Monochrome &middot; Penyimpanan Lokal Browser
+        </footer>
+      </div>
     </div>
   );
 }

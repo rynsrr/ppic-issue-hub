@@ -1,19 +1,6 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-/**
- * Calculates human-readable elapsed duration from a date string (Indonesian)
- */
-export function getElapsedTimeDetailed(dateString: string): {
+export function getElapsedTime(dateString: string): {
   text: string;
-  shortText: string;
-  hoursElapsed: number;
-  daysElapsed: number;
-  urgencyLevel: 'normal' | 'warning' | 'critical';
+  isOverdue: boolean;
 } {
   const start = new Date(dateString).getTime();
   const now = Date.now();
@@ -26,67 +13,33 @@ export function getElapsedTimeDetailed(dateString: string): {
   const minutes = totalMinutes % 60;
 
   let text = '';
-  let shortText = '';
-
   if (days > 0) {
-    text = `${days} hari ${hours} jam ${minutes} menit lalu`;
-    shortText = `${days}h ${hours}j`;
+    text = `${days}h ${hours}j lalu`;
   } else if (hours > 0) {
-    text = `${hours} jam ${minutes} menit lalu`;
-    shortText = `${hours}j ${minutes}m`;
+    text = `${hours}j ${minutes}m lalu`;
   } else {
-    text = `${Math.max(1, minutes)} menit lalu`;
-    shortText = `${Math.max(1, minutes)}m`;
+    text = `${Math.max(1, minutes)}m lalu`;
   }
 
-  let urgencyLevel: 'normal' | 'warning' | 'critical' = 'normal';
-  if (totalHours >= 24) {
-    urgencyLevel = 'critical';
-  } else if (totalHours >= 8) {
-    urgencyLevel = 'warning';
-  }
+  // Overdue if more than 24 hours
+  const isOverdue = totalHours >= 24;
 
-  return {
-    text,
-    shortText,
-    hoursElapsed: totalHours,
-    daysElapsed: days,
-    urgencyLevel,
-  };
+  return { text, isOverdue };
 }
 
-/**
- * Format date to Indonesian localized display (e.g., 27 Oktober 2026)
- */
-export function formatDateIndo(dateStr: string, includeTime = false): string {
+export function formatDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function formatIndoDate(dateStr: string): string {
   try {
-    const d = new Date(dateStr);
-    const months = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    const day = d.getDate();
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-
-    if (!includeTime) {
-      return `${day} ${month} ${year}`;
-    }
-
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${month} ${year}, ${hours}:${minutes}`;
+    const [y, m, d] = dateStr.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
   } catch {
     return dateStr;
   }
-}
-
-/**
- * Get date key string YYYY-MM-DD
- */
-export function toDateKey(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
