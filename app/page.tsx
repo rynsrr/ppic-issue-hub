@@ -22,7 +22,6 @@ import {
   Calendar,
   Settings2,
   X,
-  RotateCcw,
   Cloud,
   Database,
   Sun,
@@ -176,11 +175,6 @@ export default function MinimalIssueHubPage() {
     setPpicNames(tempNames);
     setIsEditNamesOpen(false);
     await savePpicNames(tempNames);
-  };
-
-  // Reset custom PPIC names to defaults
-  const handleResetNames = () => {
-    setTempNames(DEFAULT_PPIC_NAMES);
   };
 
   // 1. Unresolved Issues (Pinned, with live elapsed duration)
@@ -684,17 +678,7 @@ export default function MinimalIssueHubPage() {
                   </div>
                 ))}
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 dark:border-white/10">
-                  <button
-                    type="button"
-                    onClick={handleResetNames}
-                    className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:text-white/40 dark:hover:text-white transition-colors"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset Defaults</span>
-                  </button>
-
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200/80 dark:border-white/10">
                     <button
                       type="button"
                       onClick={() => setIsEditNamesOpen(false)}
@@ -709,7 +693,6 @@ export default function MinimalIssueHubPage() {
                       Save Changes
                     </button>
                   </div>
-                </div>
               </form>
             </div>
           </div>
