@@ -225,80 +225,66 @@ export default function MinimalIssueHubPage() {
           </div>
         </header>
 
-        {/* SECTION 1: UNRESOLVED ISSUES (PINNED AT TOP WITH LIVE ELAPSED DURATION) */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
+        {/* SECTION 1: UNRESOLVED ISSUES (COMPACT & MINIMALIST) */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold tracking-tight text-white/90">
-                Unresolved Issues
-              </h2>
-              <span className="text-xs px-2 py-0.2 rounded-full bg-white/10 text-white/80 font-mono font-medium">
+              <h2 className="font-semibold text-white/90">Unresolved Issues</h2>
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/70">
                 {unresolvedIssues.length}
               </span>
             </div>
-            <span className="text-[11px] text-white/30">Auto-calculated elapsed time</span>
           </div>
 
           {unresolvedIssues.length === 0 ? (
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
-              <p className="text-xs text-white/50">
-                No pending issues. All operational issues have been resolved.
-              </p>
+            <div className="py-2.5 px-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-white/40">
+              All issues resolved.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
               {unresolvedIssues.map((issue) => {
                 const time = getElapsedTime(issue.createdAt);
 
                 return (
                   <div
                     key={issue.id}
-                    className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/25 hover:bg-white/[0.07] transition-all flex flex-col justify-between gap-3"
+                    className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-white/15 transition-all"
                   >
-                    <div>
-                      {/* PPIC Badge + Elapsed Duration */}
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/90 border border-white/10 truncate max-w-[160px]">
-                          {ppicNames[issue.ppic] || issue.ppic}
-                        </span>
-
-                        <span
-                          className={`text-[11px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
-                            time.isOverdue
-                              ? 'text-red-400 bg-red-500/10 border border-red-500/20'
-                              : 'text-white/60 bg-white/5 border border-white/10'
-                          }`}
-                        >
-                          <Clock className="w-3 h-3" />
-                          {time.text}
-                        </span>
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="text-xs sm:text-sm font-medium text-white/95 leading-snug">
+                    {/* Left: PPIC Tag + Title */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/80 shrink-0">
+                        {ppicNames[issue.ppic] || issue.ppic}
+                      </span>
+                      <p className="text-xs text-white/90 truncate">
                         {issue.title}
-                      </h3>
-                      <p className="text-[11px] text-white/35 mt-1.5">
-                        {formatEnglishDate(issue.date)}
                       </p>
                     </div>
 
-                    {/* Quick Actions */}
-                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                      <button
-                        onClick={() => handleDelete(issue.id)}
-                        className="p-1.5 text-white/30 hover:text-white rounded-lg transition-colors"
-                        title="Delete"
+                    {/* Right: Elapsed Duration + Resolve Button */}
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                          time.isOverdue
+                            ? 'text-red-400 bg-red-500/10'
+                            : 'text-white/40'
+                        }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        {time.text}
+                      </span>
 
                       <button
                         onClick={() => handleToggleStatus(issue.id)}
-                        className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 transition-all"
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white text-white hover:text-black font-medium transition-all"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Resolve</span>
+                        Resolve
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(issue.id)}
+                        className="p-1 text-white/20 hover:text-white transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
