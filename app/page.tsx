@@ -228,59 +228,29 @@ export default function MinimalIssueHubPage() {
     <div className="min-h-screen bg-black text-white p-4 sm:p-6 md:p-10 font-sans selection:bg-white selection:text-black">
       <div className="max-w-4xl mx-auto space-y-7">
         {/* HEADER */}
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
-              {isCloudActive ? (
-                <span
-                  title="Cloud Sync Active"
-                  className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30 shrink-0"
-                >
-                  <Cloud className="w-3.5 h-3.5" />
-                </span>
-              ) : (
-                <span
-                  title="Local Storage"
-                  className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white/50 border border-white/10 shrink-0"
-                >
-                  <Database className="w-3.5 h-3.5" />
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-white/40 mt-0.5">5 PPIC Operations &middot; Monthly Issue Tracker</p>
-          </div>
-
-          {/* Filter Pills + Edit Names Trigger */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => setSelectedFilterPPIC('ALL')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  selectedFilterPPIC === 'ALL'
-                    ? 'bg-white text-black font-semibold shadow'
-                    : 'text-white/60 hover:text-white'
-                }`}
-              >
-                All
-              </button>
-              {PPIC_KEYS.map((key) => {
-                const active = selectedFilterPPIC === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedFilterPPIC(key)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all truncate max-w-[140px] ${
-                      active
-                        ? 'bg-white text-black font-semibold shadow'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                    title={ppicNames[key]}
+        <header className="space-y-3 pb-4 border-b border-white/10">
+          {/* Top Row: Title, Status Icon, and Actions */}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+                {isCloudActive ? (
+                  <span
+                    title="Cloud Sync Active"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30 shrink-0"
                   >
-                    {ppicNames[key]}
-                  </button>
-                );
-              })}
+                    <Cloud className="w-3.5 h-3.5" />
+                  </span>
+                ) : (
+                  <span
+                    title="Local Storage"
+                    className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-white/50 border border-white/10 shrink-0"
+                  >
+                    <Database className="w-3.5 h-3.5" />
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-white/40 mt-0.5">5 PPIC Operations &middot; Monthly Issue Tracker</p>
             </div>
 
             <button
@@ -288,12 +258,43 @@ export default function MinimalIssueHubPage() {
                 setTempNames(ppicNames);
                 setIsEditNamesOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-white/70 hover:text-white border border-white/10 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-white/70 hover:text-white border border-white/10 transition-colors shrink-0"
               title="Edit names for the 5 PPICs"
             >
               <Settings2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Edit Names</span>
+              <span>Edit Names</span>
             </button>
+          </div>
+
+          {/* Bottom Row: Full-Width Filter Bar */}
+          <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-xl border border-white/10 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              onClick={() => setSelectedFilterPPIC('ALL')}
+              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                selectedFilterPPIC === 'ALL'
+                  ? 'bg-white text-black font-semibold shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+            {PPIC_KEYS.map((key) => {
+              const active = selectedFilterPPIC === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedFilterPPIC(key)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                    active
+                      ? 'bg-white text-black font-semibold shadow'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title={ppicNames[key]}
+                >
+                  {ppicNames[key]}
+                </button>
+              );
+            })}
           </div>
         </header>
 
