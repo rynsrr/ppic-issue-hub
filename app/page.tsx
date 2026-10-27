@@ -648,11 +648,6 @@ export default function MinimalIssueHubPage() {
             </div>
           </div>
         )}
-
-        {/* FOOTER */}
-        <footer className="pt-4 border-t border-white/5 text-center text-xs text-white/20">
-          5 PPIC &middot; Minimalist Dark Edition &middot; Local Storage & Supabase Ready
-        </footer>
       </div>
     </div>
   );
