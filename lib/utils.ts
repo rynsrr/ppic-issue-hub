@@ -14,14 +14,14 @@ export function getElapsedTime(dateString: string): {
 
   let text = '';
   if (days > 0) {
-    text = `${days}h ${hours}j lalu`;
+    text = `${days}d ${hours}h ago`;
   } else if (hours > 0) {
-    text = `${hours}j ${minutes}m lalu`;
+    text = `${hours}h ${minutes}m ago`;
   } else {
-    text = `${Math.max(1, minutes)}m lalu`;
+    text = `${Math.max(1, minutes)}m ago`;
   }
 
-  // Overdue if more than 24 hours
+  // Overdue if 24 hours or longer
   const isOverdue = totalHours >= 24;
 
   return { text, isOverdue };
@@ -34,10 +34,10 @@ export function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function formatIndoDate(dateStr: string): string {
+export function formatEnglishDate(dateStr: string): string {
   try {
     const [y, m, d] = dateStr.split('-');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
   } catch {
     return dateStr;

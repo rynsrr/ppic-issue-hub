@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Issue, PPICId, PPIC_KEYS } from '@/types/issue';
 import { loadIssues, saveIssues, loadPPICNames, savePPICNames, PPICNamesMap, DEFAULT_PPIC_NAMES } from '@/lib/storage';
-import { getElapsedTime, formatDateKey, formatIndoDate } from '@/lib/utils';
+import { getElapsedTime, formatDateKey, formatEnglishDate } from '@/lib/utils';
 import {
   Clock,
   Check,
@@ -17,11 +17,11 @@ import {
   RotateCcw,
 } from 'lucide-react';
 
-export default function AppleTVMinimalPage() {
+export default function MinimalIssueHubPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedFilterPPIC, setSelectedFilterPPIC] = useState<PPICId | 'ALL'>('ALL');
 
-  // PPIC Names State (Customizable!)
+  // Customizable PPIC Names
   const [ppicNames, setPpicNames] = useState<PPICNamesMap>(DEFAULT_PPIC_NAMES);
   const [isEditNamesOpen, setIsEditNamesOpen] = useState(false);
   const [tempNames, setTempNames] = useState<PPICNamesMap>(DEFAULT_PPIC_NAMES);
@@ -30,7 +30,7 @@ export default function AppleTVMinimalPage() {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date(2026, 9, 1));
   const [selectedDateKey, setSelectedDateKey] = useState<string>('2026-10-27');
 
-  // Quick 1-row input state
+  // Quick 1-row input
   const [newTitle, setNewTitle] = useState('');
   const [newPpic, setNewPpic] = useState<PPICId>('PPIC 1');
   const [newDate, setNewDate] = useState('2026-10-27');
@@ -52,7 +52,7 @@ export default function AppleTVMinimalPage() {
     saveIssues(newList);
   };
 
-  // Add issue handler (fast & simple)
+  // Add issue
   const handleAddIssue = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -92,7 +92,7 @@ export default function AppleTVMinimalPage() {
     updateIssues(issues.filter((i) => i.id !== id));
   };
 
-  // Save Custom PPIC Names
+  // Save custom PPIC names
   const handleSavePpicNames = (e: React.FormEvent) => {
     e.preventDefault();
     setPpicNames(tempNames);
@@ -100,12 +100,12 @@ export default function AppleTVMinimalPage() {
     setIsEditNamesOpen(false);
   };
 
-  // Reset Custom PPIC Names to Default
+  // Reset custom PPIC names to defaults
   const handleResetNames = () => {
     setTempNames(DEFAULT_PPIC_NAMES);
   };
 
-  // 1. Unresolved Issues (Always at top, with elapsed time)
+  // 1. Unresolved Issues (Pinned on Top, with live elapsed duration)
   const unresolvedIssues = useMemo(() => {
     return issues
       .filter((i) => i.status === 'BELUM_SELESAI')
@@ -116,14 +116,14 @@ export default function AppleTVMinimalPage() {
   // 2. Month Calendar calculation
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
-  const monthName = currentMonth.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+  const monthName = currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
   const calendarDays = useMemo(() => {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    let startDay = firstDay.getDay();
-    if (startDay === 0) startDay = 7;
+    let startDay = firstDay.getDay(); // 0: Sun, 1: Mon
+    if (startDay === 0) startDay = 7; // Convert to Mon=1 ... Sun=7
 
     const totalDays = lastDay.getDate();
     const days: { dateKey: string; dayNum: number; isCurrentMonth: boolean }[] = [];
@@ -172,19 +172,14 @@ export default function AppleTVMinimalPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4 sm:p-6 md:p-10 font-sans selection:bg-white selection:text-black">
       <div className="max-w-4xl mx-auto space-y-7">
-        {/* HEADER: Apple TV Minimal Header */}
+        {/* HEADER */}
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
-              <span className="text-[10px] tracking-widest uppercase px-2 py-0.5 rounded bg-white/10 text-white/70">
-                tvOS
-              </span>
-            </div>
-            <p className="text-xs text-white/40 mt-0.5">Pemantauan Isu 5 PPIC &middot; Kalender Bulanan</p>
+            <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+            <p className="text-xs text-white/40 mt-0.5">5 PPIC Operations &middot; Monthly Issue Tracker</p>
           </div>
 
-          {/* Understated Filter Pills + Edit Names Button */}
+          {/* Filter Pills + Edit Names Trigger */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-white/[0.06] p-1 rounded-xl border border-white/10">
               <button
@@ -195,7 +190,7 @@ export default function AppleTVMinimalPage() {
                     : 'text-white/60 hover:text-white'
                 }`}
               >
-                Semua
+                All
               </button>
               {PPIC_KEYS.map((key) => {
                 const active = selectedFilterPPIC === key;
@@ -216,39 +211,38 @@ export default function AppleTVMinimalPage() {
               })}
             </div>
 
-            {/* Edit PPIC Names Trigger */}
             <button
               onClick={() => {
                 setTempNames(ppicNames);
                 setIsEditNamesOpen(true);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-medium text-white/70 hover:text-white border border-white/10 transition-colors"
-              title="Edit nama untuk 5 PPIC"
+              title="Edit names for the 5 PPICs"
             >
               <Settings2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Edit Nama</span>
+              <span className="hidden sm:inline">Edit Names</span>
             </button>
           </div>
         </header>
 
-        {/* SECTION 1: ISU BELUM SELESAI DI ATAS PLUS WAKTUNYA */}
+        {/* SECTION 1: UNRESOLVED ISSUES (PINNED AT TOP WITH LIVE ELAPSED DURATION) */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold tracking-tight text-white/90">
-                Isu Belum Selesai
+                Unresolved Issues
               </h2>
               <span className="text-xs px-2 py-0.2 rounded-full bg-white/10 text-white/80 font-mono font-medium">
                 {unresolvedIssues.length}
               </span>
             </div>
-            <span className="text-[11px] text-white/30">Waktu dihitung otomatis</span>
+            <span className="text-[11px] text-white/30">Auto-calculated elapsed time</span>
           </div>
 
           {unresolvedIssues.length === 0 ? (
             <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-center">
               <p className="text-xs text-white/50">
-                Tidak ada isu yang tertunda. Semua kendala telah diselesaikan.
+                No pending issues. All operational issues have been resolved.
               </p>
             </div>
           ) : (
@@ -262,7 +256,7 @@ export default function AppleTVMinimalPage() {
                     className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/25 hover:bg-white/[0.07] transition-all flex flex-col justify-between gap-3"
                   >
                     <div>
-                      {/* Badge PPIC (Customized Name) + Elapsed Time (Waktunya) */}
+                      {/* PPIC Badge + Elapsed Duration */}
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white/10 text-white/90 border border-white/10 truncate max-w-[160px]">
                           {ppicNames[issue.ppic] || issue.ppic}
@@ -280,21 +274,21 @@ export default function AppleTVMinimalPage() {
                         </span>
                       </div>
 
-                      {/* Judul Isu */}
+                      {/* Title */}
                       <h3 className="text-xs sm:text-sm font-medium text-white/95 leading-snug">
                         {issue.title}
                       </h3>
                       <p className="text-[11px] text-white/35 mt-1.5">
-                        {formatIndoDate(issue.date)}
+                        {formatEnglishDate(issue.date)}
                       </p>
                     </div>
 
-                    {/* Quick Action Button */}
+                    {/* Quick Actions */}
                     <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                       <button
                         onClick={() => handleDelete(issue.id)}
                         className="p-1.5 text-white/30 hover:text-white rounded-lg transition-colors"
-                        title="Hapus"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -304,7 +298,7 @@ export default function AppleTVMinimalPage() {
                         className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white text-white hover:text-black border border-white/15 transition-all"
                       >
                         <Check className="w-3.5 h-3.5" />
-                        <span>Selesaikan</span>
+                        <span>Resolve</span>
                       </button>
                     </div>
                   </div>
@@ -314,7 +308,7 @@ export default function AppleTVMinimalPage() {
           )}
         </section>
 
-        {/* SECTION 2: INPUT CEPAT 1 BARIS (SUPER SIMPLE) */}
+        {/* SECTION 2: QUICK 1-ROW ADD ISSUE FORM */}
         <section className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10">
           <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
             <select
@@ -332,7 +326,7 @@ export default function AppleTVMinimalPage() {
             <input
               type="text"
               required
-              placeholder="Tulis kendala PPIC di sini..."
+              placeholder="Describe PPIC issue or bottleneck..."
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               className="w-full flex-1 px-3.5 py-2 rounded-xl bg-white/[0.05] border border-white/15 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/40"
@@ -350,16 +344,16 @@ export default function AppleTVMinimalPage() {
               className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-semibold flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Tambah</span>
+              <span>Add Issue</span>
             </button>
           </form>
         </section>
 
-        {/* SECTION 3: TAMPILAN BULANAN (MONTHLY VIEW) */}
+        {/* SECTION 3: MONTHLY CALENDAR VIEW */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold tracking-tight text-white/90">
-              Tampilan Kalender Bulanan
+              Monthly Calendar View
             </h2>
 
             {/* Month Switcher */}
@@ -367,7 +361,7 @@ export default function AppleTVMinimalPage() {
               <button
                 onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
                 className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
-                title="Bulan sebelumnya"
+                title="Previous month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -377,24 +371,24 @@ export default function AppleTVMinimalPage() {
               <button
                 onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
                 className="p-1.5 rounded-lg text-white/60 hover:text-white transition-colors"
-                title="Bulan berikutnya"
+                title="Next month"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Calendar Grid (Clean Apple TV Frosted Sheet) */}
+          {/* Calendar Grid */}
           <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/10 space-y-2">
-            {/* Weekday Labels */}
+            {/* Weekday Labels (English) */}
             <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-white/30 uppercase pb-1">
-              <div>Sen</div>
-              <div>Sel</div>
-              <div>Rab</div>
-              <div>Kam</div>
-              <div>Jum</div>
-              <div>Sab</div>
-              <div>Min</div>
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+              <div>Sun</div>
             </div>
 
             {/* Days Grid */}
@@ -457,12 +451,12 @@ export default function AppleTVMinimalPage() {
             </div>
           </div>
 
-          {/* DETAIL DAFTAR ISU PADA TANGGAL TERPILIH */}
+          {/* SELECTED DATE ISSUES LIST */}
           <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5">
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-white/50" />
               <h3 className="text-xs font-semibold text-white/80">
-                Isu Tanggal: {formatIndoDate(selectedDateKey)}
+                Issues for {formatEnglishDate(selectedDateKey)}
               </h3>
               <span className="text-xs text-white/30 font-mono">
                 ({selectedDateIssues.length})
@@ -471,7 +465,7 @@ export default function AppleTVMinimalPage() {
 
             {selectedDateIssues.length === 0 ? (
               <p className="text-xs text-white/30 italic py-1">
-                Tidak ada isu tercatat untuk tanggal ini.
+                No issues recorded for this date.
               </p>
             ) : (
               <div className="space-y-1.5">
@@ -505,13 +499,13 @@ export default function AppleTVMinimalPage() {
                               : 'bg-white/10 text-white border-white/20 hover:bg-white hover:text-black'
                           }`}
                         >
-                          {isDone ? 'Buka Kembali' : 'Selesai'}
+                          {isDone ? 'Reopen' : 'Resolve'}
                         </button>
 
                         <button
                           onClick={() => handleDelete(issue.id)}
                           className="p-1 text-white/30 hover:text-white transition-colors"
-                          title="Hapus"
+                          title="Delete"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -524,7 +518,7 @@ export default function AppleTVMinimalPage() {
           </div>
         </section>
 
-        {/* MODAL EDIT NAMA 5 PPIC (Apple TV Style Sheet) */}
+        {/* MODAL: EDIT 5 PPIC NAMES */}
         {isEditNamesOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
@@ -536,7 +530,7 @@ export default function AppleTVMinimalPage() {
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <Settings2 className="w-4 h-4 text-white/70" />
-                  <h3 className="text-sm font-semibold text-white">Ubah Nama 5 PPIC</h3>
+                  <h3 className="text-sm font-semibold text-white">Edit 5 PPIC Names</h3>
                 </div>
                 <button
                   onClick={() => setIsEditNamesOpen(false)}
@@ -548,13 +542,13 @@ export default function AppleTVMinimalPage() {
 
               <form onSubmit={handleSavePpicNames} className="space-y-3">
                 <p className="text-xs text-white/50">
-                  Sesuaikan nama departemen, bahan, atau penanggung jawab untuk masing-masing PPIC:
+                  Customize department, material, or PIC labels for each PPIC unit:
                 </p>
 
                 {PPIC_KEYS.map((key) => (
                   <div key={key} className="space-y-1">
                     <label className="block text-[11px] font-medium text-white/60">
-                      Label Asli: <span className="text-white/90 font-semibold">{key}</span>
+                      Original Label: <span className="text-white/90 font-semibold">{key}</span>
                     </label>
                     <input
                       type="text"
@@ -566,7 +560,7 @@ export default function AppleTVMinimalPage() {
                           [key]: e.target.value,
                         }))
                       }
-                      placeholder={`Nama untuk ${key}`}
+                      placeholder={`Name for ${key}`}
                       className="w-full px-3 py-2 rounded-xl bg-white/[0.05] border border-white/15 text-xs text-white focus:outline-none focus:border-white/40"
                     />
                   </div>
@@ -579,7 +573,7 @@ export default function AppleTVMinimalPage() {
                     className="flex items-center gap-1 text-[11px] text-white/40 hover:text-white transition-colors"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>Reset Nama</span>
+                    <span>Reset Defaults</span>
                   </button>
 
                   <div className="flex items-center gap-2">
@@ -588,13 +582,13 @@ export default function AppleTVMinimalPage() {
                       onClick={() => setIsEditNamesOpen(false)}
                       className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 text-xs font-medium transition-colors"
                     >
-                      Batal
+                      Cancel
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-1.5 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-semibold shadow transition-all"
                     >
-                      Simpan Perubahan
+                      Save Changes
                     </button>
                   </div>
                 </div>
@@ -605,7 +599,7 @@ export default function AppleTVMinimalPage() {
 
         {/* FOOTER */}
         <footer className="pt-4 border-t border-white/5 text-center text-xs text-white/20">
-          5 PPIC &middot; Apple TV Monochrome &middot; Penyimpanan Lokal Browser
+          5 PPIC &middot; Minimalist Dark Edition &middot; Local Storage
         </footer>
       </div>
     </div>

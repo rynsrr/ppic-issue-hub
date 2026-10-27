@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PPIC Issues — Apple TV Edition',
-  description: 'Aplikasi sederhana penampung isu 5 PPIC dengan tampilan bulanan dan pelacak durasi',
+  title: 'PPIC Issue Tracker',
+  description: 'Minimalist issue tracking for 5 PPIC units with monthly calendar view and live duration tracker',
 };
 
 export default function RootLayout({
@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className="dark">
+    <html lang="en" className="dark">
       <body className="bg-black text-[#F5F5F7] min-h-screen selection:bg-white selection:text-black">
         {children}
       </body>
