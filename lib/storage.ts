@@ -1,17 +1,17 @@
 import { Issue, PPICId } from '@/types/issue';
 import { INITIAL_ISSUES } from './seedData';
 
-const STORAGE_KEY = 'ppic_minimal_issues_en_v4';
-const NAMES_STORAGE_KEY = 'ppic_custom_names_en_v4';
+const STORAGE_KEY = 'ppic_minimal_issues_v5';
+const NAMES_STORAGE_KEY = 'ppic_custom_names_v5';
 
 export type PPICNamesMap = Record<PPICId, string>;
 
 export const DEFAULT_PPIC_NAMES: PPICNamesMap = {
-  'PPIC 1': 'PPIC 1 (Raw Material)',
-  'PPIC 2': 'PPIC 2 (Production Scheduling)',
-  'PPIC 3': 'PPIC 3 (Finished Goods)',
-  'PPIC 4': 'PPIC 4 (Packaging)',
-  'PPIC 5': 'PPIC 5 (Subcontract)',
+  'PPIC 1': 'PPIC 1 (Royan)',
+  'PPIC 2': 'PPIC 2 (Cynara)',
+  'PPIC 3': 'PPIC 3 (Ami)',
+  'PPIC 4': 'PPIC 4 (Ryan)',
+  'PPIC 5': 'PPIC 5 (Hanamy)',
 };
 
 export function loadIssues(): Issue[] {
@@ -40,7 +40,10 @@ export function loadPPICNames(): PPICNamesMap {
   if (typeof window === 'undefined') return DEFAULT_PPIC_NAMES;
   try {
     const raw = localStorage.getItem(NAMES_STORAGE_KEY);
-    if (!raw) return DEFAULT_PPIC_NAMES;
+    if (!raw) {
+      localStorage.setItem(NAMES_STORAGE_KEY, JSON.stringify(DEFAULT_PPIC_NAMES));
+      return DEFAULT_PPIC_NAMES;
+    }
     const parsed = JSON.parse(raw);
     return { ...DEFAULT_PPIC_NAMES, ...parsed };
   } catch {
