@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Issue, PPICId, PPIC_KEYS } from '@/types/issue';
-import { loadIssues, saveIssues, loadPPICNames, savePPICNames, PPICNamesMap, DEFAULT_PPIC_NAMES } from '@/lib/storage';
+import {
+  getIssues,
+  addIssue,
+  updateIssueStatus,
+  removeIssue,
+  getPpicNames,
+  savePpicNames,
+} from '@/lib/dataService';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { PPICNamesMap, DEFAULT_PPIC_NAMES } from '@/lib/storage';
 import { getElapsedTime, formatDateKey, formatEnglishDate } from '@/lib/utils';
 import {
   Clock,
@@ -15,11 +24,14 @@ import {
   Settings2,
   X,
   RotateCcw,
+  Cloud,
+  Database,
 } from 'lucide-react';
 
 export default function MinimalIssueHubPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedFilterPPIC, setSelectedFilterPPIC] = useState<PPICId | 'ALL'>('ALL');
+  const [isCloudActive, setIsCloudActive] = useState<boolean>(false);
 
   // Customizable PPIC Names
   const [ppicNames, setPpicNames] = useState<PPICNamesMap>(DEFAULT_PPIC_NAMES);
@@ -35,25 +47,59 @@ export default function MinimalIssueHubPage() {
   const [newPpic, setNewPpic] = useState<PPICId>('PPIC 1');
   const [newDate, setNewDate] = useState('2026-10-27');
 
-  // Live timer tick every 30s
+  // Load data function
+  const refreshData = async () => {
+    const [fetchedIssues, fetchedNames] = await Promise.all([
+      getIssues(),
+      getPpicNames(),
+    ]);
+    setIssues(fetchedIssues);
+    setPpicNames(fetchedNames);
+    setTempNames(fetchedNames);
+  };
+
+  // Live timer tick every 30s & Realtime Subscription
   const [, setTick] = useState(0);
   useEffect(() => {
-    setIssues(loadIssues());
-    const loadedNames = loadPPICNames();
-    setPpicNames(loadedNames);
-    setTempNames(loadedNames);
+    setIsCloudActive(isSupabaseConfigured());
+    refreshData();
+
+    // Setup Supabase Realtime when connected
+    if (isSupabaseConfigured() && supabase) {
+      const channel = supabase
+        .channel('realtime:all')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'issues' },
+          () => {
+            getIssues().then(setIssues);
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'ppic_names' },
+          () => {
+            getPpicNames().then((names) => {
+              setPpicNames(names);
+              setTempNames(names);
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        if (supabase) {
+          supabase.removeChannel(channel);
+        }
+      };
+    }
 
     const interval = setInterval(() => setTick((t) => t + 1), 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const updateIssues = (newList: Issue[]) => {
-    setIssues(newList);
-    saveIssues(newList);
-  };
-
   // Add issue
-  const handleAddIssue = (e: React.FormEvent) => {
+  const handleAddIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
@@ -66,38 +112,47 @@ export default function MinimalIssueHubPage() {
       createdAt: new Date().toISOString(),
     };
 
-    updateIssues([created, ...issues]);
+    // Optimistic UI update
+    setIssues((prev) => [created, ...prev]);
     setNewTitle('');
     setSelectedDateKey(newDate);
+
+    // Save to service (Supabase & LocalStorage)
+    await addIssue(created);
   };
 
   // 1-Click resolve / toggle
-  const handleToggleStatus = (id: string) => {
-    const updated = issues.map((item) => {
-      if (item.id === id) {
-        const isDone = item.status === 'SELESAI';
-        return {
-          ...item,
-          status: (isDone ? 'BELUM_SELESAI' : 'SELESAI') as Issue['status'],
-          resolvedAt: isDone ? null : new Date().toISOString(),
-        };
-      }
-      return item;
-    });
-    updateIssues(updated);
+  const handleToggleStatus = async (id: string) => {
+    const target = issues.find((i) => i.id === id);
+    if (!target) return;
+
+    const isDone = target.status === 'SELESAI';
+    const nextStatus = isDone ? 'BELUM_SELESAI' : 'SELESAI';
+    const nextResolvedAt = isDone ? null : new Date().toISOString();
+
+    setIssues((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, status: nextStatus, resolvedAt: nextResolvedAt }
+          : item
+      )
+    );
+
+    await updateIssueStatus(id, nextStatus, nextResolvedAt);
   };
 
   // Delete
-  const handleDelete = (id: string) => {
-    updateIssues(issues.filter((i) => i.id !== id));
+  const handleDelete = async (id: string) => {
+    setIssues((prev) => prev.filter((i) => i.id !== id));
+    await removeIssue(id);
   };
 
   // Save custom PPIC names
-  const handleSavePpicNames = (e: React.FormEvent) => {
+  const handleSavePpicNames = async (e: React.FormEvent) => {
     e.preventDefault();
     setPpicNames(tempNames);
-    savePPICNames(tempNames);
     setIsEditNamesOpen(false);
+    await savePpicNames(tempNames);
   };
 
   // Reset custom PPIC names to defaults
@@ -175,7 +230,18 @@ export default function MinimalIssueHubPage() {
         {/* HEADER */}
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold tracking-tight text-white">PPIC Issue Hub</h1>
+              {isCloudActive ? (
+                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-emerald-300 border border-emerald-500/30">
+                  <Cloud className="w-3 h-3" /> Cloud Sync
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-white/50 border border-white/10">
+                  <Database className="w-3 h-3" /> Local Storage
+                </span>
+              )}
+            </div>
             <p className="text-xs text-white/40 mt-0.5">5 PPIC Operations &middot; Monthly Issue Tracker</p>
           </div>
 
@@ -585,7 +651,7 @@ export default function MinimalIssueHubPage() {
 
         {/* FOOTER */}
         <footer className="pt-4 border-t border-white/5 text-center text-xs text-white/20">
-          5 PPIC &middot; Minimalist Dark Edition &middot; Local Storage
+          5 PPIC &middot; Minimalist Dark Edition &middot; Local Storage & Supabase Ready
         </footer>
       </div>
     </div>
