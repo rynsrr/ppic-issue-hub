@@ -26,6 +26,7 @@ import {
   Database,
   Sun,
   Moon,
+  ChevronDown,
 } from 'lucide-react';
 
 export default function MinimalIssueHubPage() {
@@ -33,6 +34,21 @@ export default function MinimalIssueHubPage() {
   const [selectedFilterPPIC, setSelectedFilterPPIC] = useState<PPICId | 'ALL'>('ALL');
   const [isCloudActive, setIsCloudActive] = useState<boolean>(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Card Expansion State for Long Issue Texts
+  const [expandedIssueIds, setExpandedIssueIds] = useState<Set<string>>(new Set());
+
+  const toggleExpandIssue = (id: string) => {
+    setExpandedIssueIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Customizable PPIC Names
   const [ppicNames, setPpicNames] = useState<PPICNamesMap>(DEFAULT_PPIC_NAMES);
@@ -510,48 +526,91 @@ export default function MinimalIssueHubPage() {
                 <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 [scrollbar-width:thin]">
                   {unresolvedIssues.map((issue) => {
                     const time = getElapsedTime(issue.createdAt);
+                    const isExpanded = expandedIssueIds.has(issue.id);
 
                     return (
                       <div
                         key={issue.id}
-                        className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10 transition-all shadow-2xs"
+                        onClick={() => toggleExpandIssue(issue.id)}
+                        className={`group p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border transition-all shadow-2xs cursor-pointer select-none ${
+                          isExpanded
+                            ? 'border-slate-400/80 dark:border-white/25 bg-slate-100/80 dark:bg-white/[0.04] shadow-xs'
+                            : 'border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
+                        }`}
+                        title="Klik untuk membuka / menutup seluruh teks issue"
                       >
-                        {/* Left: PPIC Tag + Title */}
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0">
-                            {ppicNames[issue.ppic] || issue.ppic}
-                          </span>
-                          <p className="text-xs font-medium text-slate-900 dark:text-white/90 truncate max-w-[210px] sm:max-w-[260px]">
-                            {issue.title}
-                          </p>
+                        {/* Top row: PPIC Tag + Chevron (left) & Duration + Actions (right) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0">
+                              {ppicNames[issue.ppic] || issue.ppic}
+                            </span>
+                            <span className="text-slate-400 dark:text-white/30 group-hover:text-slate-700 dark:group-hover:text-white/70 transition-colors">
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180 text-slate-900 dark:text-white' : ''
+                                }`}
+                              />
+                            </span>
+                          </div>
+
+                          <div
+                            className="flex items-center gap-2 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span
+                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                                time.isOverdue
+                                  ? 'text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/10 font-semibold'
+                                  : 'text-slate-500 dark:text-white/40'
+                              }`}
+                            >
+                              {time.text}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStatus(issue.id);
+                              }}
+                              className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white/10 dark:hover:bg-white dark:text-white dark:hover:text-black font-semibold transition-all shadow-2xs active:scale-95"
+                            >
+                              Resolve
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(issue.id);
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-600 dark:text-white/20 dark:hover:text-red-400 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Right: Elapsed Duration + Resolve Button */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                              time.isOverdue
-                                ? 'text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/10 font-semibold'
-                                : 'text-slate-500 dark:text-white/40'
+                        {/* Title: Truncated when collapsed, Fully wrapped text when expanded */}
+                        <div className="mt-1.5">
+                          <p
+                            className={`text-xs font-medium text-slate-900 dark:text-white/90 ${
+                              isExpanded
+                                ? 'break-words whitespace-normal leading-relaxed select-text'
+                                : 'truncate'
                             }`}
                           >
-                            {time.text}
-                          </span>
+                            {issue.title}
+                          </p>
 
-                          <button
-                            onClick={() => handleToggleStatus(issue.id)}
-                            className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white/10 dark:hover:bg-white dark:text-white dark:hover:text-black font-semibold transition-all shadow-2xs"
-                          >
-                            Resolve
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(issue.id)}
-                            className="p-1 text-slate-400 hover:text-red-600 dark:text-white/20 dark:hover:text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isExpanded && (
+                            <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-[10px] text-slate-400 dark:text-white/40">
+                              <span>Tanggal issue: {formatEnglishDate(issue.date)}</span>
+                              <span className="text-slate-400 dark:text-white/40 font-medium">Klik untuk menutup ▲</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -582,44 +641,91 @@ export default function MinimalIssueHubPage() {
                 <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 [scrollbar-width:thin]">
                   {selectedDateIssues.map((issue) => {
                     const isDone = issue.status === 'SELESAI';
+                    const isExpanded = expandedIssueIds.has(issue.id);
 
                     return (
                       <div
                         key={issue.id}
-                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 flex items-center justify-between gap-2.5 shadow-2xs"
+                        onClick={() => toggleExpandIssue(issue.id)}
+                        className={`group p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border transition-all shadow-2xs cursor-pointer select-none ${
+                          isExpanded
+                            ? 'border-slate-400/80 dark:border-white/25 bg-slate-100/80 dark:bg-white/[0.04] shadow-xs'
+                            : 'border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
+                        }`}
+                        title="Klik untuk membuka / menutup seluruh teks issue"
                       >
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0 truncate max-w-[140px]">
-                            {ppicNames[issue.ppic] || issue.ppic}
-                          </span>
+                        {/* Top row: PPIC Tag + Chevron (left) & Actions (right) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/80 w-fit shrink-0 truncate max-w-[140px]">
+                              {ppicNames[issue.ppic] || issue.ppic}
+                            </span>
+                            <span className="text-slate-400 dark:text-white/30 group-hover:text-slate-700 dark:group-hover:text-white/70 transition-colors">
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-180 text-slate-900 dark:text-white' : ''
+                                }`}
+                              />
+                            </span>
+                          </div>
+
+                          <div
+                            className="flex items-center gap-1.5 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStatus(issue.id);
+                              }}
+                              className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border transition-all active:scale-95 ${
+                                isDone
+                                  ? 'bg-slate-200/60 text-slate-600 border-slate-300 dark:bg-white/5 dark:text-white/40 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
+                                  : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white dark:hover:text-black font-semibold'
+                              }`}
+                            >
+                              {isDone ? 'Reopen' : 'Resolve'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(issue.id);
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Title: Truncated when collapsed, Fully wrapped text when expanded */}
+                        <div className="mt-1.5">
                           <p
-                            className={`text-xs font-medium truncate max-w-[210px] sm:max-w-[260px] ${
+                            className={`text-xs font-medium ${
                               isDone ? 'line-through text-slate-400 dark:text-white/30' : 'text-slate-900 dark:text-white/90'
+                            } ${
+                              isExpanded
+                                ? 'break-words whitespace-normal leading-relaxed select-text'
+                                : 'truncate'
                             }`}
                           >
                             {issue.title}
                           </p>
-                        </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            onClick={() => handleToggleStatus(issue.id)}
-                            className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border transition-all ${
-                              isDone
-                                ? 'bg-slate-200/60 text-slate-600 border-slate-300 dark:bg-white/5 dark:text-white/40 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white dark:hover:text-black font-semibold'
-                            }`}
-                          >
-                            {isDone ? 'Reopen' : 'Resolve'}
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(issue.id)}
-                            className="p-1 text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isExpanded && (
+                            <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-[10px] text-slate-400 dark:text-white/40">
+                              <span>
+                                {isDone && issue.resolvedAt
+                                  ? `Resolved: ${new Date(issue.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                  : `Status: ${issue.status === 'SELESAI' ? 'Selesai' : 'Belum Selesai'}`}
+                              </span>
+                              <span className="text-slate-400 dark:text-white/40 font-medium">Klik untuk menutup ▲</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
