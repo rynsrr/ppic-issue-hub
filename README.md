@@ -1,4 +1,4 @@
-# 📋 PPIC Issue Hub — Minimalist Dark Edition
+# 📋 Daily Plan and Report — Minimalist Dark Edition
 
 A clean, super simple issue tracking web application for **5 PPIC (Production Planning & Inventory Control)** units with a monthly calendar view, unresolved issue duration tracker pinned on top, customizable PPIC names, and an understated dark minimalist design.
 

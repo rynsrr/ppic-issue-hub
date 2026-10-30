@@ -267,7 +267,7 @@ export default function MinimalIssueHubPage() {
           {/* Brand & Status Icon */}
           <div className="flex items-center gap-2 shrink-0">
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
-              PPIC Issue Hub
+              Daily Plan and Report
             </h1>
             {isCloudActive ? (
               <span
@@ -372,7 +372,7 @@ export default function MinimalIssueHubPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Describe PPIC issue or bottleneck..."
+                  placeholder="Describe daily plan or report..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"

@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'PPIC Issue Tracker',
-  description: 'Minimalist issue tracking for 5 PPIC units with monthly calendar view and live duration tracker',
+  title: 'Daily Plan and Report',
+  description: 'Daily plan and report tracking for 5 PPIC units with monthly calendar view and live duration tracker',
 };
 
 export default function RootLayout({
