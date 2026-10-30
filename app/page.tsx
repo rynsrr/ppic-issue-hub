@@ -18,7 +18,12 @@ import {
   saveDepartments,
 } from '@/lib/dataService';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { getElapsedTime, formatDateKey, formatEnglishDate } from '@/lib/utils';
+import {
+  getElapsedTime,
+  formatDateKey,
+  formatEnglishDate,
+  formatIndonesianDate,
+} from '@/lib/utils';
 import {
   Clock,
   Plus,
@@ -34,15 +39,24 @@ import {
   ChevronDown,
   Users,
   Filter,
+  CheckCircle2,
+  AlertCircle,
+  ClipboardList,
+  Check,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 
-export default function MinimalIssueHubPage() {
+export default function DailyPlanAndReportPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [departments, setDepartments] = useState<DepartmentConfig[]>(DEFAULT_DEPARTMENTS);
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedPerson, setSelectedPerson] = useState<string>('ALL');
   const [isCloudActive, setIsCloudActive] = useState<boolean>(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Status Filter in Right Column: 'ALL' | 'BELUM_SELESAI' | 'SELESAI'
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'BELUM_SELESAI' | 'SELESAI'>('ALL');
 
   // Card Expansion State for Long Issue Texts
   const [expandedIssueIds, setExpandedIssueIds] = useState<Set<string>>(new Set());
@@ -64,7 +78,7 @@ export default function MinimalIssueHubPage() {
   const [tempDepts, setTempDepts] = useState<DepartmentConfig[]>(DEFAULT_DEPARTMENTS);
   const [newDeptInput, setNewDeptInput] = useState('');
 
-  // Month navigation: default October 2026
+  // Month navigation: default current or October 2026
   const [currentMonth, setCurrentMonth] = useState<Date>(() => new Date(2026, 9, 1));
   const [selectedDateKey, setSelectedDateKey] = useState<string>('2026-10-27');
 
@@ -162,7 +176,7 @@ export default function MinimalIssueHubPage() {
     }
   }, [selectedDept, departments]);
 
-  // Add issue
+  // Add issue / plan
   const handleAddIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -185,7 +199,7 @@ export default function MinimalIssueHubPage() {
     await addIssue(created);
   };
 
-  // 1-Click resolve / toggle
+  // 1-Click resolve / toggle with actual finish timestamp
   const handleToggleStatus = async (id: string) => {
     const target = issues.find((i) => i.id === id);
     if (!target) return;
@@ -255,13 +269,59 @@ export default function MinimalIssueHubPage() {
     }));
   }, [departments, selectedDept]);
 
-  // 1. Unresolved Issues (Pinned, with live elapsed duration)
-  const unresolvedIssues = useMemo(() => {
+  // Selected date issues (filtered by dept & person)
+  const selectedDateIssues = useMemo(() => {
     return issues
-      .filter((i) => i.status === 'BELUM_SELESAI')
-      .filter(matchesFilter)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }, [issues, selectedDept, selectedPerson]);
+      .filter((i) => i.date === selectedDateKey)
+      .filter(matchesFilter);
+  }, [issues, selectedDateKey, selectedDept, selectedPerson]);
+
+  // Filtered issues for right column (by status tab: ALL, BELUM_SELESAI, SELESAI)
+  const displayedIssues = useMemo(() => {
+    if (statusFilter === 'ALL') return selectedDateIssues;
+    return selectedDateIssues.filter((i) => i.status === statusFilter);
+  }, [selectedDateIssues, statusFilter]);
+
+  // Selected date KPI metrics (Plan vs Actual)
+  const selectedDateStats = useMemo(() => {
+    const total = selectedDateIssues.length;
+    const finished = selectedDateIssues.filter((i) => i.status === 'SELESAI').length;
+    const pending = total - finished;
+    const percentage = total > 0 ? Math.round((finished / total) * 100) : 0;
+    return { total, finished, pending, percentage };
+  }, [selectedDateIssues]);
+
+  // Overdue unfinished plans from other dates (Alert)
+  const overdueOtherIssues = useMemo(() => {
+    return issues.filter(
+      (i) => i.status === 'BELUM_SELESAI' && i.date !== selectedDateKey && matchesFilter(i)
+    );
+  }, [issues, selectedDateKey, selectedDept, selectedPerson]);
+
+  // Department Achievement Breakdown for the selected date
+  const departmentBreakdown = useMemo(() => {
+    return departments.map((dept) => {
+      const deptIssues = issues.filter((i) => {
+        const parsed = parseIssuePic(i.ppic);
+        return (
+          parsed.department.toLowerCase() === dept.name.toLowerCase() &&
+          i.date === selectedDateKey
+        );
+      });
+      const total = deptIssues.length;
+      const finished = deptIssues.filter((i) => i.status === 'SELESAI').length;
+      const pending = total - finished;
+      const percentage = total > 0 ? Math.round((finished / total) * 100) : 0;
+      return {
+        department: dept.name,
+        members: dept.members,
+        total,
+        finished,
+        pending,
+        percentage,
+      };
+    });
+  }, [departments, issues, selectedDateKey]);
 
   // 2. Month Calendar calculation
   const year = currentMonth.getFullYear();
@@ -301,7 +361,7 @@ export default function MinimalIssueHubPage() {
 
   const numWeeks = useMemo(() => Math.ceil(calendarDays.length / 7), [calendarDays]);
 
-  // Issues grouped by date
+  // Issues grouped by date for calendar dots and badges
   const issuesByDate = useMemo(() => {
     const map = new Map<string, Issue[]>();
     for (const issue of issues) {
@@ -312,13 +372,6 @@ export default function MinimalIssueHubPage() {
     }
     return map;
   }, [issues, selectedDept, selectedPerson]);
-
-  // Selected date issues
-  const selectedDateIssues = useMemo(() => {
-    return issues
-      .filter((i) => i.date === selectedDateKey)
-      .filter(matchesFilter);
-  }, [issues, selectedDateKey, selectedDept, selectedPerson]);
 
   return (
     <div className="min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-slate-100 dark:bg-[#090A0F] text-slate-900 dark:text-[#F5F5F7] font-sans transition-colors duration-200">
@@ -380,7 +433,13 @@ export default function MinimalIssueHubPage() {
                   title={`${dept.name}: ${dept.members.join(', ')}`}
                 >
                   <span>{dept.name}</span>
-                  <span className={`text-[10px] font-mono px-1 rounded-full ${active ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black' : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/50'}`}>
+                  <span
+                    className={`text-[10px] font-mono px-1 rounded-full ${
+                      active
+                        ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black'
+                        : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/50'
+                    }`}
+                  >
                     {dept.members.length}
                   </span>
                 </button>
@@ -460,10 +519,10 @@ export default function MinimalIssueHubPage() {
           </div>
         </header>
 
-        {/* RESPONSIVE FULL WIDTH & AUTOFIT HEIGHT WORKSPACE */}
+        {/* WORKSPACE: LEFT (INPUT + CALENDAR + DEPT BREAKDOWN) & RIGHT (CONTROL HUB PLAN VS ACTUAL) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 flex-1 min-h-0">
-          {/* LEFT COLUMN: QUICK ADD + CALENDAR VIEW (8 of 12 on desktop) */}
-          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
+          {/* LEFT COLUMN: QUICK ADD + CALENDAR VIEW + DEPT BREAKDOWN (6 of 12 on desktop) */}
+          <div className="lg:col-span-6 xl:col-span-6 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
             {/* QUICK 1-ROW ADD TASK FORM */}
             <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-2.5 sm:p-3 shrink-0 shadow-xs">
               <form onSubmit={handleAddIssue} className="flex flex-col sm:flex-row items-center gap-2">
@@ -471,7 +530,7 @@ export default function MinimalIssueHubPage() {
                 <select
                   value={newPic}
                   onChange={(e) => setNewPic(e.target.value)}
-                  className="w-full sm:w-52 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 truncate shadow-2xs"
+                  className="w-full sm:w-48 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500 dark:focus:border-white/40 truncate shadow-2xs"
                 >
                   {departments.map((dept) => (
                     <optgroup
@@ -495,7 +554,7 @@ export default function MinimalIssueHubPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Describe daily plan or report..."
+                  placeholder="Tulis target plan / laporan hari ini..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.05] border border-slate-300 dark:border-white/15 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 focus:outline-none focus:border-slate-500 dark:focus:border-white/40 shadow-2xs"
@@ -518,20 +577,14 @@ export default function MinimalIssueHubPage() {
               </form>
             </section>
 
-            {/* MONTHLY CALENDAR VIEW (AUTOFIT HEIGHT ON DESKTOP) */}
-            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-4 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
+            {/* MONTHLY CALENDAR VIEW (AUTOFIT HEIGHT) */}
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-slate-500 dark:text-white/50" />
                   <h2 className="text-xs sm:text-sm font-semibold tracking-tight text-slate-900 dark:text-white/90">
-                    Monthly Calendar View
+                    Kalender Produksi
                   </h2>
-                  {(selectedDept !== 'ALL' || selectedPerson !== 'ALL') && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/70">
-                      {selectedDept !== 'ALL' ? selectedDept : 'All'}
-                      {selectedPerson !== 'ALL' ? ` · ${selectedPerson}` : ''}
-                    </span>
-                  )}
                 </div>
 
                 {/* Month Switcher */}
@@ -556,7 +609,7 @@ export default function MinimalIssueHubPage() {
                 </div>
               </div>
 
-              {/* Weekday Labels (English) */}
+              {/* Weekday Labels */}
               <div className="grid grid-cols-7 text-center text-[10px] sm:text-[11px] font-semibold text-slate-400 dark:text-white/30 uppercase shrink-0 pb-0.5">
                 <div>Mon</div>
                 <div>Tue</div>
@@ -567,7 +620,7 @@ export default function MinimalIssueHubPage() {
                 <div>Sun</div>
               </div>
 
-              {/* Days Grid: Expands evenly to fit remaining height on desktop */}
+              {/* Days Grid */}
               <div
                 className="grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 min-h-0"
                 style={{
@@ -587,7 +640,7 @@ export default function MinimalIssueHubPage() {
                         setSelectedDateKey(cell.dateKey);
                         setNewDate(cell.dateKey);
                       }}
-                      className={`min-h-[50px] lg:min-h-0 h-full p-1.5 sm:p-2 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                      className={`min-h-[46px] lg:min-h-0 h-full p-1.5 sm:p-2 rounded-xl border text-left flex flex-col justify-between transition-all ${
                         isSelected
                           ? 'bg-slate-900 text-white dark:bg-white dark:text-black border-slate-900 dark:border-white shadow-md scale-[1.01]'
                           : cell.isCurrentMonth
@@ -603,8 +656,8 @@ export default function MinimalIssueHubPage() {
                               isSelected
                                 ? 'bg-white/20 text-white dark:bg-black/20 dark:text-black font-bold'
                                 : hasUnresolved
-                                ? 'bg-red-500/15 text-red-600 dark:text-red-300 dark:bg-red-500/20 font-semibold'
-                                : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white/60'
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 dark:bg-amber-500/20 font-semibold'
+                                : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
                             }`}
                           >
                             {dayIssues.length}
@@ -620,7 +673,7 @@ export default function MinimalIssueHubPage() {
                               isSelected
                                 ? 'bg-white dark:bg-black'
                                 : hasUnresolved
-                                ? 'bg-red-500'
+                                ? 'bg-amber-500'
                                 : 'bg-emerald-500'
                             }`}
                           />
@@ -631,178 +684,282 @@ export default function MinimalIssueHubPage() {
                 })}
               </div>
             </section>
-          </div>
 
-          {/* RIGHT COLUMN: UNRESOLVED PLANS/REPORTS + SELECTED DATE (split 50/50 in height) */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
-            {/* UNRESOLVED PLANS/REPORTS (INTERNAL SCROLL, NO WINDOW SCROLL) */}
-            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
-              <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-200/70 dark:border-white/10 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
-                  <h2 className="font-semibold text-slate-900 dark:text-white/90">
-                    Unresolved Plans & Issues
-                  </h2>
-                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold">
-                    {unresolvedIssues.length}
-                  </span>
-                </div>
-              </div>
-
-              {unresolvedIssues.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 text-center font-medium">
-                  ✓ All plans and issues resolved. Great job!
-                </div>
-              ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 [scrollbar-width:thin]">
-                  {unresolvedIssues.map((issue) => {
-                    const time = getElapsedTime(issue.createdAt);
-                    const isExpanded = expandedIssueIds.has(issue.id);
-                    const parsed = parseIssuePic(issue.ppic);
-                    const badgeStyle = getDepartmentBadgeStyle(parsed.department);
-
-                    return (
-                      <div
-                        key={issue.id}
-                        onClick={() => toggleExpandIssue(issue.id)}
-                        className={`group p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] border transition-all shadow-2xs cursor-pointer select-none ${
-                          isExpanded
-                            ? 'border-slate-400/80 dark:border-white/25 bg-slate-100/80 dark:bg-white/[0.04] shadow-xs'
-                            : 'border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
-                        }`}
-                        title="Klik untuk membuka / menutup seluruh teks"
-                      >
-                        {/* Top row: Department/PIC Badge + Chevron (left) & Duration + Actions (right) */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              className={`text-[9px] font-semibold px-2 py-0.5 rounded-md ${badgeStyle} w-fit shrink-0 truncate max-w-[170px] shadow-2xs`}
-                              title={parsed.display}
-                            >
-                              {parsed.display}
-                            </span>
-                            <span className="text-slate-400 dark:text-white/30 group-hover:text-slate-700 dark:group-hover:text-white/70 transition-colors">
-                              <ChevronDown
-                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                  isExpanded ? 'rotate-180 text-slate-900 dark:text-white' : ''
-                                }`}
-                              />
-                            </span>
-                          </div>
-
-                          <div
-                            className="flex items-center gap-2 shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span
-                              className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                                time.isOverdue
-                                  ? 'text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/10 font-semibold'
-                                  : 'text-slate-500 dark:text-white/40'
-                              }`}
-                            >
-                              {time.text}
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleStatus(issue.id);
-                              }}
-                              className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white/10 dark:hover:bg-white dark:text-white dark:hover:text-black font-semibold transition-all shadow-2xs active:scale-95"
-                            >
-                              Resolve
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(issue.id);
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-600 dark:text-white/20 dark:hover:text-red-400 transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Title: Truncated when collapsed, Fully wrapped text when expanded */}
-                        <div className="mt-1.5">
-                          <p
-                            className={`text-xs font-medium text-slate-900 dark:text-white/90 ${
-                              isExpanded
-                                ? 'break-words whitespace-normal leading-relaxed select-text'
-                                : 'truncate'
-                            }`}
-                          >
-                            {issue.title}
-                          </p>
-
-                          {isExpanded && (
-                            <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-[10px] text-slate-400 dark:text-white/40">
-                              <span>Tanggal: {formatEnglishDate(issue.date)}</span>
-                              <span className="text-slate-400 dark:text-white/40 font-medium">
-                                Klik untuk menutup ▲
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* SELECTED DATE ISSUES LIST (INTERNAL SCROLL, NO WINDOW SCROLL) */}
-            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-3.5 flex-1 min-h-0 flex flex-col gap-2 shadow-xs">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70 dark:border-white/10 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-white/50" />
-                  <h3 className="text-xs font-semibold text-slate-900 dark:text-white/90">
-                    Plans & Reports for {formatEnglishDate(selectedDateKey)}
-                  </h3>
-                </div>
-                <span className="text-xs text-slate-500 dark:text-white/40 font-mono font-medium">
-                  {selectedDateIssues.length} item{selectedDateIssues.length !== 1 ? 's' : ''}
+            {/* DEPARTEMEN PLAN VS ACTUAL PROGRESS BARS */}
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 shrink-0 shadow-xs">
+              <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-200/60 dark:border-white/10">
+                <span className="text-xs font-semibold text-slate-900 dark:text-white/90">
+                  Target & Realisasi per Departemen (Tgl {formatEnglishDate(selectedDateKey)})
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-white/40 font-mono">
+                  Klik untuk filter
                 </span>
               </div>
 
-              {selectedDateIssues.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center p-3 text-xs text-slate-400 dark:text-white/40 italic text-center">
-                  No plans or reports recorded for this date.
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {departmentBreakdown.map((item) => {
+                  const isFiltered = selectedDept.toLowerCase() === item.department.toLowerCase();
+
+                  return (
+                    <button
+                      key={item.department}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDept(isFiltered ? 'ALL' : item.department);
+                        setSelectedPerson('ALL');
+                      }}
+                      className={`p-2 rounded-xl border text-left transition-all ${
+                        isFiltered
+                          ? 'border-slate-900 bg-slate-100 dark:border-white dark:bg-white/10 shadow-xs'
+                          : 'border-slate-200/80 dark:border-white/5 bg-slate-50/70 dark:bg-white/[0.02] hover:border-slate-300 dark:hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${getDepartmentBadgeStyle(item.department)}`}>
+                          {item.department}
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold text-slate-700 dark:text-white/80">
+                          {item.finished}/{item.total}
+                        </span>
+                      </div>
+
+                      {/* Mini Progress Bar */}
+                      <div className="w-full bg-slate-200 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            item.total === 0
+                              ? 'bg-slate-300 dark:bg-white/10'
+                              : item.percentage === 100
+                              ? 'bg-emerald-500'
+                              : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${item.total === 0 ? 0 : item.percentage}%` }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+
+          {/* RIGHT COLUMN: PLAN VS ACTUAL CONTROL CENTER (6 of 12 on desktop) */}
+          <div className="lg:col-span-6 xl:col-span-6 flex flex-col gap-2.5 sm:gap-3 min-h-0 h-full">
+            <section className="bg-white dark:bg-[#12131A] border border-slate-200 dark:border-white/10 rounded-2xl p-3 sm:p-4 flex-1 min-h-0 flex flex-col gap-3 shadow-xs">
+              {/* CONTROL CENTER HEADER */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-slate-700 dark:text-white/70" />
+                  <div>
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                      Plan vs Actual Control
+                    </h2>
+                    <p className="text-[11px] text-slate-500 dark:text-white/50">
+                      {formatIndonesianDate(selectedDateKey)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Overdue from other dates indicator */}
+                {overdueOtherIssues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (overdueOtherIssues[0]) {
+                        setSelectedDateKey(overdueOtherIssues[0].date);
+                        setNewDate(overdueOtherIssues[0].date);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] font-semibold transition-all"
+                    title="Lihat tugas yang tertunda dari hari lain"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>{overdueOtherIssues.length} Tertunda Hari Lain</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 3 KPI STRIP CARDS IN 1 ROW */}
+              <div className="grid grid-cols-3 gap-2 shrink-0">
+                {/* 1. Total Plan */}
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-white/50 font-medium">
+                    <span>Target Plan</span>
+                    <ClipboardList className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1">
+                    <span className="text-lg sm:text-xl font-bold font-mono text-slate-900 dark:text-white">
+                      {selectedDateStats.total}
+                    </span>
+                    <span className="text-[10px] text-slate-400">tugas</span>
+                  </div>
+                </div>
+
+                {/* 2. Actual Finish */}
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                  <div className="flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+                    <span>Actual Finish</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-lg sm:text-xl font-bold font-mono text-emerald-700 dark:text-emerald-300">
+                      {selectedDateStats.finished}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      ({selectedDateStats.percentage}%)
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Pending / Delay */}
+                <div className={`p-2.5 rounded-xl border ${
+                  selectedDateStats.pending > 0
+                    ? 'bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-300'
+                    : 'bg-slate-50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 text-slate-400'
+                }`}>
+                  <div className="flex items-center justify-between text-[11px] font-medium">
+                    <span>Pending</span>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1">
+                    <span className="text-lg sm:text-xl font-bold font-mono">
+                      {selectedDateStats.pending}
+                    </span>
+                    <span className="text-[10px] opacity-70">belum</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* OVERALL DAILY ACHIEVEMENT PROGRESS BAR */}
+              <div className="space-y-1 shrink-0">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-slate-600 dark:text-white/60">
+                    Tingkat Realisasi Selesai
+                  </span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    {selectedDateStats.percentage}% Achieved
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-white/10 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${selectedDateStats.percentage}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* SUB-FILTER TABS: SEMUA, BELUM SELESAI, SELESAI */}
+              <div className="flex items-center justify-between gap-2 shrink-0 pt-1">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 p-0.5 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('ALL')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      statusFilter === 'ALL'
+                        ? 'bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-white/50 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Semua ({selectedDateStats.total})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('BELUM_SELESAI')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      statusFilter === 'BELUM_SELESAI'
+                        ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200 shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-white/50 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ⏳ Belum ({selectedDateStats.pending})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('SELESAI')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      statusFilter === 'SELESAI'
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-white/50 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    ✅ Selesai ({selectedDateStats.finished})
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-slate-400 dark:text-white/40 hidden sm:inline">
+                  {displayedIssues.length} ditampilkan
+                </span>
+              </div>
+
+              {/* SCROLLABLE LIST OF PLAN VS ACTUAL CARDS */}
+              {displayedIssues.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-50/50 dark:bg-white/[0.01] border border-dashed border-slate-300 dark:border-white/10 text-center text-xs text-slate-400 dark:text-white/40">
+                  <ClipboardList className="w-8 h-8 mb-2 opacity-30" />
+                  <p className="font-medium text-slate-600 dark:text-white/60">
+                    Tidak ada plan pada filter ini
+                  </p>
+                  <p className="text-[11px] mt-0.5">
+                    Tambahkan rencana kerja atau ganti filter di atas.
+                  </p>
                 </div>
               ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 [scrollbar-width:thin]">
-                  {selectedDateIssues.map((issue) => {
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 [scrollbar-width:thin]">
+                  {displayedIssues.map((issue) => {
                     const isDone = issue.status === 'SELESAI';
                     const isExpanded = expandedIssueIds.has(issue.id);
                     const parsed = parseIssuePic(issue.ppic);
                     const badgeStyle = getDepartmentBadgeStyle(parsed.department);
+                    const time = getElapsedTime(issue.createdAt);
+
+                    const finishTime = issue.resolvedAt
+                      ? new Intl.DateTimeFormat('id-ID', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }).format(new Date(issue.resolvedAt)).replace('.', ':')
+                      : null;
 
                     return (
                       <div
                         key={issue.id}
                         onClick={() => toggleExpandIssue(issue.id)}
-                        className={`group p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border transition-all shadow-2xs cursor-pointer select-none ${
+                        className={`group p-2.5 sm:p-3 rounded-2xl border transition-all shadow-2xs cursor-pointer select-none ${
+                          isDone
+                            ? 'bg-slate-50/60 dark:bg-white/[0.01] border-slate-200/80 dark:border-white/5'
+                            : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
+                        } ${
                           isExpanded
-                            ? 'border-slate-400/80 dark:border-white/25 bg-slate-100/80 dark:bg-white/[0.04] shadow-xs'
-                            : 'border-slate-200 dark:border-white/5 hover:border-slate-300 dark:hover:border-white/10'
+                            ? 'ring-1 ring-slate-400 dark:ring-white/30 bg-slate-100/90 dark:bg-white/[0.05]'
+                            : ''
                         }`}
-                        title="Klik untuk membuka / menutup seluruh teks"
+                        title="Klik untuk melihat teks lengkap"
                       >
-                        {/* Top row: Department/PIC Badge + Chevron (left) & Actions (right) */}
+                        {/* Top row: PIC Badge + Finish/Pending Status + 1-Click Action */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span
-                              className={`text-[9px] font-semibold px-2 py-0.5 rounded-md ${badgeStyle} w-fit shrink-0 truncate max-w-[170px] shadow-2xs`}
-                              title={parsed.display}
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${badgeStyle} shrink-0 truncate max-w-[170px] shadow-2xs`}
                             >
                               {parsed.display}
                             </span>
+
+                            {/* Status indicator pill */}
+                            {isDone ? (
+                              <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 shrink-0">
+                                <Check className="w-3 h-3" />
+                                <span>Finish {finishTime ? finishTime : ''}</span>
+                              </span>
+                            ) : (
+                              <span
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded-md shrink-0 ${
+                                  time.isOverdue
+                                    ? 'bg-red-500/15 text-red-600 dark:text-red-400 font-semibold'
+                                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                }`}
+                              >
+                                {time.text}
+                              </span>
+                            )}
+
                             <span className="text-slate-400 dark:text-white/30 group-hover:text-slate-700 dark:group-hover:text-white/70 transition-colors">
                               <ChevronDown
                                 className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -812,6 +969,7 @@ export default function MinimalIssueHubPage() {
                             </span>
                           </div>
 
+                          {/* Action Buttons: 1-Click Finish / Reopen & Delete */}
                           <div
                             className="flex items-center gap-1.5 shrink-0"
                             onClick={(e) => e.stopPropagation()}
@@ -822,13 +980,23 @@ export default function MinimalIssueHubPage() {
                                 e.stopPropagation();
                                 handleToggleStatus(issue.id);
                               }}
-                              className={`text-[11px] font-medium px-2 py-0.5 rounded-lg border transition-all active:scale-95 ${
+                              className={`flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl transition-all active:scale-95 shadow-2xs ${
                                 isDone
-                                  ? 'bg-slate-200/60 text-slate-600 border-slate-300 dark:bg-white/5 dark:text-white/40 dark:border-white/10 hover:text-slate-900 dark:hover:text-white'
-                                  : 'bg-slate-900 text-white border-transparent hover:bg-slate-800 dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white dark:hover:text-black font-semibold'
+                                  ? 'bg-slate-200/80 hover:bg-slate-300 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white/70'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-emerald-500/20'
                               }`}
                             >
-                              {isDone ? 'Reopen' : 'Resolve'}
+                              {isDone ? (
+                                <>
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>Reopen</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  <span>Finish</span>
+                                </>
+                              )}
                             </button>
 
                             <button
@@ -837,19 +1005,21 @@ export default function MinimalIssueHubPage() {
                                 e.stopPropagation();
                                 handleDelete(issue.id);
                               }}
-                              className="p-1 text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors"
-                              title="Delete"
+                              className="p-1.5 text-slate-400 hover:text-red-600 dark:text-white/30 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                              title="Hapus tugas"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
-                        {/* Title: Truncated when collapsed, Fully wrapped text when expanded */}
+                        {/* Title & Description */}
                         <div className="mt-1.5">
                           <p
-                            className={`text-xs font-medium ${
-                              isDone ? 'line-through text-slate-400 dark:text-white/30' : 'text-slate-900 dark:text-white/90'
+                            className={`text-xs ${
+                              isDone
+                                ? 'line-through text-slate-400 dark:text-white/35 font-normal'
+                                : 'text-slate-900 dark:text-white/95 font-medium'
                             } ${
                               isExpanded
                                 ? 'break-words whitespace-normal leading-relaxed select-text'
@@ -859,13 +1029,17 @@ export default function MinimalIssueHubPage() {
                             {issue.title}
                           </p>
 
+                          {/* Expanded detail box */}
                           {isExpanded && (
-                            <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-[10px] text-slate-400 dark:text-white/40">
-                              <span>
-                                {isDone && issue.resolvedAt
-                                  ? `Resolved: ${new Date(issue.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                  : `Status: ${issue.status === 'SELESAI' ? 'Selesai' : 'Belum Selesai'}`}
-                              </span>
+                            <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400 dark:text-white/40">
+                              <div>
+                                <span>Target: {formatIndonesianDate(issue.date)}</span>
+                                {issue.resolvedAt && (
+                                  <span className="ml-2 font-semibold text-emerald-600 dark:text-emerald-400">
+                                    • Actual Selesai: {new Date(issue.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-slate-400 dark:text-white/40 font-medium">
                                 Klik untuk menutup ▲
                               </span>

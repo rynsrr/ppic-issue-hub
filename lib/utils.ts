@@ -43,3 +43,18 @@ export function formatEnglishDate(dateStr: string): string {
     return dateStr;
   }
 }
+
+export function formatIndonesianDate(dateStr: string): string {
+  try {
+    const [y, m, d] = dateStr.split('-');
+    const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(dt);
+  } catch {
+    return dateStr;
+  }
+}
