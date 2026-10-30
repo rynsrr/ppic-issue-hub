@@ -1,8 +1,10 @@
-import { Issue, PPICId } from '@/types/issue';
+import { Issue, PPICId, DepartmentConfig, DEFAULT_DEPARTMENTS } from '@/types/issue';
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
   loadIssues as loadLocalIssues,
   saveIssues as saveLocalIssues,
+  loadDepartments as loadLocalDepartments,
+  saveDepartments as saveLocalDepartments,
   loadPPICNames as loadLocalPPICNames,
   savePPICNames as saveLocalPPICNames,
   PPICNamesMap,
@@ -104,40 +106,88 @@ export async function removeIssue(id: string): Promise<void> {
   saveLocalIssues(current.filter((i) => i.id !== id));
 }
 
-// Load custom PPIC names
-export async function getPpicNames(): Promise<PPICNamesMap> {
+// Get departments and team members
+export async function getDepartments(): Promise<DepartmentConfig[]> {
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase.from('ppic_names').select('*');
       if (!error && data && data.length > 0) {
-        const map: PPICNamesMap = { ...DEFAULT_PPIC_NAMES };
-        data.forEach((row: any) => {
-          if (row.id && row.custom_name) {
-            map[row.id as PPICId] = row.custom_name;
+        const rowMap = new Map<string, string>();
+        data.forEach((r: any) => {
+          if (r.id && r.custom_name) {
+            rowMap.set(r.id.trim(), r.custom_name.trim());
           }
         });
-        saveLocalPPICNames(map);
-        return map;
+
+        // Match against DEFAULT_DEPARTMENTS
+        const depts: DepartmentConfig[] = DEFAULT_DEPARTMENTS.map((d) => {
+          const rowVal = rowMap.get(d.name);
+          if (rowVal) {
+            const members = rowVal.split(',').map((s) => s.trim()).filter(Boolean);
+            return { ...d, members: members.length > 0 ? members : d.members };
+          }
+          return d;
+        });
+
+        // Include any extra departments created by user (excluding legacy PPIC 1..5 keys)
+        rowMap.forEach((val, key) => {
+          if (
+            !/^ppic \d$/i.test(key) &&
+            !depts.some((d) => d.name.toLowerCase() === key.toLowerCase())
+          ) {
+            const members = val.split(',').map((s) => s.trim()).filter(Boolean);
+            depts.push({
+              id: key.toLowerCase().replace(/\s+/g, '-'),
+              name: key,
+              members,
+            });
+          }
+        });
+
+        saveLocalDepartments(depts);
+        return depts;
       }
     } catch (e) {
-      console.error('Supabase getPpicNames error:', e);
+      console.error('Supabase getDepartments error:', e);
     }
   }
-  return loadLocalPPICNames();
+  return loadLocalDepartments();
 }
 
-// Save custom PPIC names
-export async function savePpicNames(names: PPICNamesMap): Promise<void> {
+// Save departments and team members
+export async function saveDepartments(depts: DepartmentConfig[]): Promise<void> {
   if (isSupabaseConfigured() && supabase) {
     try {
-      for (const [key, value] of Object.entries(names)) {
+      for (const d of depts) {
         await supabase
           .from('ppic_names')
-          .upsert({ id: key, custom_name: value }, { onConflict: 'id' });
+          .upsert(
+            { id: d.name, custom_name: d.members.join(', ') },
+            { onConflict: 'id' }
+          );
       }
     } catch (e) {
-      console.error('Supabase savePpicNames error:', e);
+      console.error('Supabase saveDepartments error:', e);
     }
   }
-  saveLocalPPICNames(names);
+  saveLocalDepartments(depts);
+}
+
+// Legacy wrappers
+export async function getPpicNames(): Promise<PPICNamesMap> {
+  const depts = await getDepartments();
+  const map: PPICNamesMap = {};
+  depts.forEach((d) => {
+    map[d.name] = d.members.join(', ');
+  });
+  return map;
+}
+
+export async function savePpicNames(names: PPICNamesMap): Promise<void> {
+  const depts: DepartmentConfig[] = Object.entries(names).map(([name, membersStr]) => ({
+    id: name.toLowerCase().replace(/\s+/g, '-'),
+    name,
+    members: membersStr.split(',').map((s) => s.trim()).filter(Boolean),
+  }));
+  await saveDepartments(depts);
 }
